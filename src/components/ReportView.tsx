@@ -3,8 +3,8 @@ import ReactMarkdown from 'react-markdown';
 import { SecurityReport } from '../types';
 import { ShieldAlert, Info, PlayCircle, CheckCircle, Link as LinkIcon, Download, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+// @ts-ignore
+import html2pdf from 'html2pdf.js';
 
 interface ReportViewProps {
   report: SecurityReport;
@@ -27,147 +27,156 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
     setIsExporting(true);
 
     try {
-      // Use a slightly lower scale for better compatibility with large reports
-      const canvas = await html2canvas(reportRef.current, {
-        scale: 1.5,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#050505',
-        windowWidth: reportRef.current.scrollWidth,
-        windowHeight: reportRef.current.scrollHeight,
-        onclone: async (clonedDoc) => {
-          // Strip unsupported color functions from all style tags
-          const styleTags = clonedDoc.getElementsByTagName('style');
-          for (let i = 0; i < styleTags.length; i++) {
-            if (styleTags[i].innerHTML) {
-              styleTags[i].innerHTML = styleTags[i].innerHTML.replace(/[-a-zA-Z0-9]+:\s*[^;}]*\b(oklab|oklch|color-mix|lab|lch|hwb)\([^;}]*(?:;|$)/g, '');
-            }
-          }
-
-          // Fetch and strip unsupported color functions from linked stylesheets
-          const linkTags = Array.from(clonedDoc.getElementsByTagName('link'));
-          for (const link of linkTags) {
-            if (link.rel === 'stylesheet' && link.href) {
-              try {
-                const res = await fetch(link.href);
-                let cssText = await res.text();
-                cssText = cssText.replace(/[-a-zA-Z0-9]+:\s*[^;}]*\b(oklab|oklch|color-mix|lab|lch|hwb)\([^;}]*(?:;|$)/g, '');
-                
-                const newStyle = clonedDoc.createElement('style');
-                newStyle.innerHTML = cssText;
-                link.parentNode?.replaceChild(newStyle, link);
-              } catch (e) {
-                console.warn('Failed to fetch stylesheet for PDF export', e);
+      const opt = {
+        margin:       [15, 15, 15, 15],
+        filename:     `BISE_Security_Report_${report.id}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { 
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+          onclone: async (clonedDoc: Document) => {
+            // Strip unsupported color functions from all style tags
+            const styleTags = clonedDoc.getElementsByTagName('style');
+            for (let i = 0; i < styleTags.length; i++) {
+              if (styleTags[i].innerHTML) {
+                styleTags[i].innerHTML = styleTags[i].innerHTML.replace(/[-a-zA-Z0-9]+:\s*[^;}]*\b(oklab|oklch|color-mix|lab|lch|hwb)\([^;}]*(?:;|$)/g, '');
               }
             }
+
+            // Fetch and strip unsupported color functions from linked stylesheets
+            const linkTags = Array.from(clonedDoc.getElementsByTagName('link'));
+            for (const link of linkTags) {
+              if (link.rel === 'stylesheet' && link.href) {
+                try {
+                  const res = await fetch(link.href);
+                  let cssText = await res.text();
+                  cssText = cssText.replace(/[-a-zA-Z0-9]+:\s*[^;}]*\b(oklab|oklch|color-mix|lab|lch|hwb)\([^;}]*(?:;|$)/g, '');
+                  
+                  const newStyle = clonedDoc.createElement('style');
+                  newStyle.innerHTML = cssText;
+                  link.parentNode?.replaceChild(newStyle, link);
+                } catch (e) {
+                  console.warn('Failed to fetch stylesheet for PDF export', e);
+                }
+              }
+            }
+
+            const elements = clonedDoc.getElementsByTagName('*');
+            for (let i = 0; i < elements.length; i++) {
+              const el = elements[i] as HTMLElement;
+              
+              // Strip inline styles containing unsupported color functions
+              const inlineStyle = el.getAttribute('style');
+              if (inlineStyle && (inlineStyle.includes('oklch') || inlineStyle.includes('oklab') || inlineStyle.includes('color-mix') || inlineStyle.includes('lab') || inlineStyle.includes('lch') || inlineStyle.includes('hwb'))) {
+                el.setAttribute('style', inlineStyle.replace(/[-a-zA-Z0-9]+:\s*[^;}]*\b(oklab|oklch|color-mix|lab|lch|hwb)\([^;}]*(?:;|$)/g, ''));
+              }
+              
+              // Force RGB for everything to avoid oklch/oklab issues
+              const style = window.getComputedStyle(el);
+              
+              if (style.color.includes('oklch') || style.color.includes('oklab')) el.style.color = '#000000';
+              if (style.backgroundColor.includes('oklch') || style.backgroundColor.includes('oklab')) el.style.backgroundColor = 'transparent';
+              if (style.borderColor.includes('oklch') || style.borderColor.includes('oklab')) el.style.borderColor = 'rgba(0,0,0,0.1)';
+              
+              // Fix text overflow/wrapping issues for PDF
+              el.style.wordBreak = 'break-word';
+              el.style.overflowWrap = 'anywhere';
+              el.style.whiteSpace = 'normal';
+              
+              // Strip filters and other problematic modern CSS
+              el.style.backdropFilter = 'none';
+              (el.style as any).webkitBackdropFilter = 'none';
+              el.style.filter = 'none';
+              
+              // Ensure visibility
+              el.style.opacity = '1';
+              el.style.visibility = 'visible';
+              
+              // Fix for glass class
+              if (el.classList.contains('glass')) {
+                el.style.background = '#ffffff';
+                el.style.border = '1px solid #e5e7eb';
+                el.style.boxShadow = 'none';
+              }
+            }
+
+            // Add a style block to the cloned document to force standard colors and wrapping
+            const style = clonedDoc.createElement('style');
+            style.innerHTML = `
+              * { 
+                color-scheme: light !important;
+                -webkit-print-color-adjust: exact !important;
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+              }
+              body, main, div, section, article {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+              }
+              .glass { 
+                background: #ffffff !important;
+                backdrop-filter: none !important;
+                border: 1px solid #e5e7eb !important;
+                box-shadow: none !important;
+              }
+              h1, h2, h3, h4, h5, h6 {
+                color: #111827 !important;
+                word-break: break-word !important;
+                overflow-wrap: break-word !important;
+                border-bottom: 1px solid #e5e7eb !important;
+                padding-bottom: 0.5rem !important;
+                margin-top: 1.5rem !important;
+                margin-bottom: 1rem !important;
+              }
+              p, span, li, td, th {
+                color: #374151 !important;
+                word-break: break-word !important;
+                overflow-wrap: break-word !important;
+                line-height: 1.6 !important;
+              }
+              .prose { 
+                color: #374151 !important; 
+                word-break: break-word !important;
+                overflow-wrap: break-word !important;
+                max-width: 100% !important;
+              }
+              pre {
+                background-color: #f3f4f6 !important;
+                border: 1px solid #e5e7eb !important;
+                padding: 1rem !important;
+                border-radius: 0.375rem !important;
+              }
+              pre, code {
+                color: #1f2937 !important;
+                white-space: pre-wrap !important;
+                word-break: break-all !important;
+                overflow-wrap: break-word !important;
+                max-width: 100% !important;
+              }
+              img, svg {
+                max-width: 100% !important;
+                height: auto !important;
+                page-break-inside: avoid !important;
+              }
+              .page-break {
+                page-break-before: always !important;
+              }
+              /* Avoid breaking inside sections */
+              section, .glass {
+                page-break-inside: avoid !important;
+                margin-bottom: 2rem !important;
+              }
+            `;
+            clonedDoc.head.appendChild(style);
           }
+        },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+      };
 
-          const elements = clonedDoc.getElementsByTagName('*');
-          for (let i = 0; i < elements.length; i++) {
-            const el = elements[i] as HTMLElement;
-            
-            // Strip inline styles containing unsupported color functions
-            const inlineStyle = el.getAttribute('style');
-            if (inlineStyle && (inlineStyle.includes('oklch') || inlineStyle.includes('oklab') || inlineStyle.includes('color-mix') || inlineStyle.includes('lab') || inlineStyle.includes('lch') || inlineStyle.includes('hwb'))) {
-              el.setAttribute('style', inlineStyle.replace(/[-a-zA-Z0-9]+:\s*[^;}]*\b(oklab|oklch|color-mix|lab|lch|hwb)\([^;}]*(?:;|$)/g, ''));
-            }
-            
-            // Force RGB for everything to avoid oklch/oklab issues
-            const style = window.getComputedStyle(el);
-            
-            if (style.color.includes('oklch') || style.color.includes('oklab')) el.style.color = '#ffffff';
-            if (style.backgroundColor.includes('oklch') || style.backgroundColor.includes('oklab')) el.style.backgroundColor = 'transparent';
-            if (style.borderColor.includes('oklch') || style.borderColor.includes('oklab')) el.style.borderColor = 'rgba(255,255,255,0.1)';
-            
-            // Fix text overflow/wrapping issues for PDF
-            el.style.wordBreak = 'break-word';
-            el.style.overflowWrap = 'anywhere';
-            el.style.whiteSpace = 'normal';
-            
-            // Strip filters and other problematic modern CSS
-            el.style.backdropFilter = 'none';
-            (el.style as any).webkitBackdropFilter = 'none';
-            el.style.filter = 'none';
-            
-            // Ensure visibility
-            el.style.opacity = '1';
-            el.style.visibility = 'visible';
-            
-            // Fix for glass class
-            if (el.classList.contains('glass')) {
-              el.style.background = 'rgba(255, 255, 255, 0.05)';
-              el.style.border = '1px solid rgba(255, 255, 255, 0.1)';
-            }
-          }
-
-          // Add a style block to the cloned document to force standard colors and wrapping
-          const style = clonedDoc.createElement('style');
-          style.innerHTML = `
-            * { 
-              color-scheme: dark !important;
-              -webkit-print-color-adjust: exact !important;
-              max-width: 100% !important;
-              box-sizing: border-box !important;
-            }
-            .glass { 
-              background: rgba(255, 255, 255, 0.05) !important;
-              backdrop-filter: none !important;
-              border: 1px solid rgba(255, 255, 255, 0.1) !important;
-            }
-            h2, h3, p, div, span, li {
-              color: white !important;
-              word-break: break-word !important;
-              overflow-wrap: break-word !important;
-            }
-            .prose { 
-              color: rgba(255,255,255,0.7) !important; 
-              word-break: break-word !important;
-              overflow-wrap: break-word !important;
-              max-width: 100% !important;
-            }
-            pre, code {
-              white-space: pre-wrap !important;
-              word-break: break-all !important;
-              overflow-wrap: break-word !important;
-              max-width: 100% !important;
-            }
-            img, svg {
-              max-width: 100% !important;
-              height: auto !important;
-            }
-          `;
-          clonedDoc.head.appendChild(style);
-        }
-      });
-      
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      const pdf = new jsPDF({
-        orientation: 'p',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const imgProps = pdf.getImageProperties(imgData);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      let heightLeft = pdfHeight;
-      let position = 0;
-
-      // Add the first page
-      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
-      heightLeft -= pageHeight;
-
-      // Add additional pages if content is longer than one page
-      while (heightLeft > 0) {
-        position = heightLeft - pdfHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
-        heightLeft -= pageHeight;
-      }
-
-      pdf.save(`BISE_Security_Report_${report.id}.pdf`);
+      await html2pdf().set(opt).from(reportRef.current).save();
     } catch (error) {
       console.error('PDF Export failed:', error);
     } finally {
