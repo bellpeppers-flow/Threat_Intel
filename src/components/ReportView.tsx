@@ -15,10 +15,10 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
   const [isExporting, setIsExporting] = React.useState(false);
 
   const sections = [
-    { title: 'Threat Intelligence', icon: ShieldAlert, content: report.threatIntelligence, color: 'text-red-400' },
-    { title: 'Threat Hunting Steps', icon: Info, content: report.threatHunting, color: 'text-blue-400' },
-    { title: 'Incident Response Playbook', icon: PlayCircle, content: report.incidentResponse, color: 'text-orange-400' },
-    { title: 'Security Best Practices', icon: CheckCircle, content: report.bestPractices, color: 'text-green-400' },
+    { title: 'Threat Intelligence', icon: ShieldAlert, content: report.threatIntelligence, color: '#f87171' }, // red-400
+    { title: 'Threat Hunting Steps', icon: Info, content: report.threatHunting, color: '#60a5fa' }, // blue-400
+    { title: 'Incident Response Playbook', icon: PlayCircle, content: report.incidentResponse, color: '#fb923c' }, // orange-400
+    { title: 'Security Best Practices', icon: CheckCircle, content: report.bestPractices, color: '#4ade80' }, // green-400
   ];
 
   const handleExportPDF = async () => {
@@ -26,20 +26,90 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
     setIsExporting(true);
 
     try {
+      // Use a slightly lower scale for better compatibility with large reports
       const canvas = await html2canvas(reportRef.current, {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
+        logging: false,
         backgroundColor: '#050505',
+        windowWidth: reportRef.current.scrollWidth,
+        windowHeight: reportRef.current.scrollHeight,
+        onclone: (clonedDoc) => {
+          const elements = clonedDoc.getElementsByTagName('*');
+          for (let i = 0; i < elements.length; i++) {
+            const el = elements[i] as HTMLElement;
+            
+            // Force RGB for everything to avoid oklch issues
+            const style = window.getComputedStyle(el);
+            
+            if (style.color.includes('oklch')) el.style.color = '#ffffff';
+            if (style.backgroundColor.includes('oklch')) el.style.backgroundColor = 'transparent';
+            if (style.borderColor.includes('oklch')) el.style.borderColor = 'rgba(255,255,255,0.1)';
+            
+            // Strip filters and other problematic modern CSS
+            el.style.backdropFilter = 'none';
+            (el.style as any).webkitBackdropFilter = 'none';
+            el.style.filter = 'none';
+            
+            // Ensure visibility
+            el.style.opacity = '1';
+            el.style.visibility = 'visible';
+            
+            // Fix for glass class
+            if (el.classList.contains('glass')) {
+              el.style.background = 'rgba(255, 255, 255, 0.05)';
+              el.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+            }
+          }
+
+          // Add a style block to the cloned document to force standard colors
+          const style = clonedDoc.createElement('style');
+          style.innerHTML = `
+            * { 
+              color-scheme: dark !important;
+              -webkit-print-color-adjust: exact !important;
+            }
+            .glass { 
+              background: rgba(255, 255, 255, 0.05) !important;
+              backdrop-filter: none !important;
+              border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            }
+            h2, h3, p, div, span {
+              color: white !important;
+            }
+            .prose { color: rgba(255,255,255,0.7) !important; }
+          `;
+          clonedDoc.head.appendChild(style);
+        }
       });
       
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'px',
-        format: [canvas.width, canvas.height]
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4'
       });
 
-      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      
+      // If the report is longer than one A4 page, we might need multiple pages
+      // But for now, let's just scale it to fit the width and handle height
+      let heightLeft = pdfHeight;
+      let position = 0;
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - pdfHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+      }
+
       pdf.save(`BISE_Security_Report_${report.id}.pdf`);
     } catch (error) {
       console.error('PDF Export failed:', error);
@@ -80,7 +150,7 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
               className="glass rounded-2xl p-6 border border-white/5 space-y-4"
             >
               <div className="flex items-center gap-3">
-                <section.icon className={cn("w-5 h-5", section.color)} />
+                <section.icon className="w-5 h-5" style={{ color: section.color }} />
                 <h3 className="font-bold uppercase tracking-widest text-xs text-white/80">{section.title}</h3>
               </div>
               <div className="prose prose-invert prose-sm max-w-none text-white/60 leading-relaxed font-sans">
@@ -99,7 +169,8 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
               {report.references.map((ref, i) => (
                 <div 
                   key={i} 
-                  className="p-3 rounded-xl bg-white/5 border border-white/5 text-xs text-blue-400 truncate"
+                  className="p-3 rounded-xl bg-white/5 border border-white/5 text-xs truncate"
+                  style={{ color: '#60a5fa' }} // blue-400
                 >
                   {ref}
                 </div>

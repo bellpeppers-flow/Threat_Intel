@@ -80,11 +80,13 @@ export default function App() {
 
     if (!userApiKey && !defaultApiKey && selectedModel === 'gemini') {
       setReport({
-        summary: "Error: No Gemini API Key found. Please configure it in the sidebar settings (Key icon) or ensure it's set in the environment.",
-        threatIntelligence: [],
-        threatHuntingSteps: [],
-        incidentResponsePlaybook: [],
-        securityBestPractices: [],
+        id: 'error',
+        timestamp: new Date().toISOString(),
+        prompt,
+        threatIntelligence: "Error: No Gemini API Key found. Please configure it in the sidebar settings (Key icon) or ensure it's set in the environment.",
+        threatHunting: "Configuration required.",
+        incidentResponse: "Configuration required.",
+        bestPractices: "Configuration required.",
         references: []
       });
       return;
@@ -100,17 +102,34 @@ export default function App() {
       formData.append('tools', JSON.stringify(tools.filter(t => t.enabled)));
       files.forEach(file => formData.append('files', file));
 
+      console.log("Sending analysis request to /api/analyze...");
       const response = await fetch('/api/analyze', {
         method: 'POST',
         body: formData,
       });
 
+      const contentType = response.headers.get("content-type");
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Backend processing failed');
+        let errorMessage = 'Backend processing failed';
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } else {
+          const textError = await response.text();
+          console.error("Server returned non-JSON error:", textError);
+          errorMessage = `Server error (${response.status}): ${textError.substring(0, 100)}...`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      if (!contentType || !contentType.includes("application/json")) {
+        const textResponse = await response.text();
+        console.error("Server returned non-JSON response:", textResponse);
+        throw new Error(`Unexpected server response format. Expected JSON, got ${contentType || 'unknown'}`);
       }
 
       const data = await response.json();
+      console.log("Received data from server:", data);
       
       const finalReport = await generateSecurityReport(
         prompt,
@@ -125,11 +144,13 @@ export default function App() {
       console.error("Analysis error:", error);
       // alert() is blocked in iframes, using console.error and state for feedback
       setReport({
-        summary: `Analysis failed: ${error.message || 'Unknown error'}. Please check your configuration and try again.`,
-        threatIntelligence: [],
-        threatHuntingSteps: [],
-        incidentResponsePlaybook: [],
-        securityBestPractices: [],
+        id: 'error',
+        timestamp: new Date().toISOString(),
+        prompt,
+        threatIntelligence: `Analysis failed: ${error.message || 'Unknown error'}. Please check your configuration and try again.`,
+        threatHunting: "Analysis failed.",
+        incidentResponse: "Analysis failed.",
+        bestPractices: "Analysis failed.",
         references: []
       });
     } finally {
