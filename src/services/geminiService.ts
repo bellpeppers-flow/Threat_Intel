@@ -15,8 +15,15 @@ export async function generateSecurityReport(
     model: "gemini-3-flash-preview",
     contents: [
       {
-        text: `You are a Business Intelligent Security Engineer (BISE). 
-        Your task is to analyze the user's request and any attached architectural documents to provide a high-fidelity security report.
+        text: `You are a Senior Business Intelligent Security Engineer (BISE) and Lead Threat Hunter. 
+        Your task is to analyze the user's request and any attached architectural documents to provide an ELABORATED, HIGH-FIDELITY, and TECHNICAL security report.
+        
+        CRITICAL GUIDELINES:
+        1. DO NOT provide generic summaries. Every section must be deeply technical and specific to the technologies identified.
+        2. THREAT HUNTING: Include actual detection logic (e.g., KQL, Splunk SPL, Sigma rules, or Python scripts) where applicable.
+        3. THREAT INTEL: Identify specific CVE IDs (e.g., CVE-2024-1234), specific Threat Actor groups (e.g., APT29, Lazarus), and detailed TTPs from the MITRE ATT&CK framework.
+        4. INCIDENT RESPONSE: Provide a granular, step-by-step technical playbook, not just high-level advice.
+        5. REFERENCES: You MUST provide a comprehensive list of URLs for every piece of intelligence mentioned.
         
         CRITICAL: Use the Google Search tool to find the LATEST security intelligence, including:
         1. Recent CVEs and vulnerabilities related to the technologies mentioned in the prompt or files.
@@ -33,11 +40,12 @@ export async function generateSecurityReport(
         
         Please provide a report in JSON format with the following structure:
         {
-          "threatHunting": "Step-by-step technical threat hunting instructions based on current TTPs.",
-          "threatIntelligence": "Latest relevant intel, including specific CVEs, actor groups, and dark web chatter summaries.",
-          "incidentResponse": "A detailed playbook specifically tailored to the identified threats.",
-          "bestPractices": "Strategic and tactical security recommendations.",
-          "references": ["List of URLs used for grounding and further reading"]
+          "technicalOverview": "A deeply technical, elaborated executive summary of the security posture and identified risks.",
+          "threatHunting": "Deeply technical, step-by-step threat hunting instructions including specific detection queries (KQL/Splunk/Sigma).",
+          "threatIntelligence": "Elaborated technical intelligence including specific CVEs, actor profiles, and recent dark web chatter analysis.",
+          "incidentResponse": "A comprehensive, technical incident response playbook tailored to the specific threats identified.",
+          "bestPractices": "Detailed strategic and tactical security recommendations with implementation guidance.",
+          "references": ["Comprehensive list of URLs used for grounding and further reading"]
         }`
       },
       ...processedFiles.map(f => {
@@ -59,13 +67,14 @@ export async function generateSecurityReport(
       responseSchema: {
         type: Type.OBJECT,
         properties: {
+          technicalOverview: { type: Type.STRING },
           threatHunting: { type: Type.STRING },
           threatIntelligence: { type: Type.STRING },
           incidentResponse: { type: Type.STRING },
           bestPractices: { type: Type.STRING },
           references: { type: Type.ARRAY, items: { type: Type.STRING } }
         },
-        required: ["threatHunting", "threatIntelligence", "incidentResponse", "bestPractices", "references"]
+        required: ["technicalOverview", "threatHunting", "threatIntelligence", "incidentResponse", "bestPractices", "references"]
       }
     }
   });

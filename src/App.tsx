@@ -83,6 +83,7 @@ export default function App() {
         id: 'error',
         timestamp: new Date().toISOString(),
         prompt,
+        technicalOverview: "Configuration required.",
         threatIntelligence: "Error: No Gemini API Key found. Please configure it in the sidebar settings (Key icon) or ensure it's set in the environment.",
         threatHunting: "Configuration required.",
         incidentResponse: "Configuration required.",
@@ -102,8 +103,8 @@ export default function App() {
       formData.append('tools', JSON.stringify(tools.filter(t => t.enabled)));
       files.forEach(file => formData.append('files', file));
 
-      console.log("Sending analysis request to /api/analyze...");
-      const response = await fetch('/api/analyze', {
+      console.log("Sending analysis request to /api/v2/analyze...");
+      const response = await fetch('/api/v2/analyze', {
         method: 'POST',
         body: formData,
       });
@@ -125,7 +126,7 @@ export default function App() {
       if (!contentType || !contentType.includes("application/json")) {
         const textResponse = await response.text();
         console.error("Server returned non-JSON response:", textResponse);
-        throw new Error(`Unexpected server response format. Expected JSON, got ${contentType || 'unknown'}`);
+        throw new Error(`Unexpected server response format. Expected JSON, got ${contentType || 'unknown'}. Response preview: ${textResponse.substring(0, 200)}`);
       }
 
       const data = await response.json();
@@ -147,6 +148,7 @@ export default function App() {
         id: 'error',
         timestamp: new Date().toISOString(),
         prompt,
+        technicalOverview: "Analysis failed.",
         threatIntelligence: `Analysis failed: ${error.message || 'Unknown error'}. Please check your configuration and try again.`,
         threatHunting: "Analysis failed.",
         incidentResponse: "Analysis failed.",

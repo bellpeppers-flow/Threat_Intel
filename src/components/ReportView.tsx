@@ -15,6 +15,7 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
   const [isExporting, setIsExporting] = React.useState(false);
 
   const sections = [
+    { title: 'Technical Overview', icon: Info, content: report.technicalOverview, color: '#a78bfa' }, // violet-400
     { title: 'Threat Intelligence', icon: ShieldAlert, content: report.threatIntelligence, color: '#f87171' }, // red-400
     { title: 'Threat Hunting Steps', icon: Info, content: report.threatHunting, color: '#60a5fa' }, // blue-400
     { title: 'Incident Response Playbook', icon: PlayCircle, content: report.incidentResponse, color: '#fb923c' }, // orange-400
@@ -39,12 +40,17 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
           for (let i = 0; i < elements.length; i++) {
             const el = elements[i] as HTMLElement;
             
-            // Force RGB for everything to avoid oklch issues
+            // Force RGB for everything to avoid oklch/oklab issues
             const style = window.getComputedStyle(el);
             
-            if (style.color.includes('oklch')) el.style.color = '#ffffff';
-            if (style.backgroundColor.includes('oklch')) el.style.backgroundColor = 'transparent';
-            if (style.borderColor.includes('oklch')) el.style.borderColor = 'rgba(255,255,255,0.1)';
+            if (style.color.includes('oklch') || style.color.includes('oklab')) el.style.color = '#ffffff';
+            if (style.backgroundColor.includes('oklch') || style.backgroundColor.includes('oklab')) el.style.backgroundColor = 'transparent';
+            if (style.borderColor.includes('oklch') || style.borderColor.includes('oklab')) el.style.borderColor = 'rgba(255,255,255,0.1)';
+            
+            // Fix text overflow/wrapping issues for PDF
+            el.style.wordBreak = 'break-word';
+            el.style.overflowWrap = 'anywhere';
+            el.style.whiteSpace = 'normal';
             
             // Strip filters and other problematic modern CSS
             el.style.backdropFilter = 'none';
@@ -77,7 +83,15 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
             h2, h3, p, div, span {
               color: white !important;
             }
-            .prose { color: rgba(255,255,255,0.7) !important; }
+            .prose { 
+              color: rgba(255,255,255,0.7) !important; 
+              word-break: break-word !important;
+              overflow-wrap: anywhere !important;
+            }
+            pre, code {
+              white-space: pre-wrap !important;
+              word-break: break-all !important;
+            }
           `;
           clonedDoc.head.appendChild(style);
         }
@@ -94,16 +108,16 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
       
-      // If the report is longer than one A4 page, we might need multiple pages
-      // But for now, let's just scale it to fit the width and handle height
+      const pageHeight = pdf.internal.pageSize.getHeight();
       let heightLeft = pdfHeight;
       let position = 0;
-      const pageHeight = pdf.internal.pageSize.getHeight();
 
+      // Add the first page
       pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
       heightLeft -= pageHeight;
 
-      while (heightLeft >= 0) {
+      // Add additional pages if content is longer than one page
+      while (heightLeft > 0) {
         position = heightLeft - pdfHeight;
         pdf.addPage();
         pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
@@ -153,7 +167,7 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
                 <section.icon className="w-5 h-5" style={{ color: section.color }} />
                 <h3 className="font-bold uppercase tracking-widest text-xs text-white/80">{section.title}</h3>
               </div>
-              <div className="prose prose-invert prose-sm max-w-none text-white/60 leading-relaxed font-sans">
+              <div className="prose prose-invert prose-sm max-w-none text-white/60 leading-relaxed font-sans break-words overflow-hidden">
                 <ReactMarkdown>{section.content}</ReactMarkdown>
               </div>
             </motion.div>
@@ -169,7 +183,7 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
               {report.references.map((ref, i) => (
                 <div 
                   key={i} 
-                  className="p-3 rounded-xl bg-white/5 border border-white/5 text-xs truncate"
+                  className="p-3 rounded-xl bg-white/5 border border-white/5 text-xs break-all"
                   style={{ color: '#60a5fa' }} // blue-400
                 >
                   {ref}

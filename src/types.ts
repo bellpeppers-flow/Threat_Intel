@@ -21,6 +21,7 @@ export interface SecurityReport {
   id: string;
   timestamp: string;
   prompt: string;
+  technicalOverview: string;
   threatHunting: string;
   threatIntelligence: string;
   incidentResponse: string;
