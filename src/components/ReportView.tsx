@@ -43,7 +43,6 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
       pdf.save(`BISE_Security_Report_${report.id}.pdf`);
     } catch (error) {
       console.error('PDF Export failed:', error);
-      alert('Failed to export PDF. Please try again.');
     } finally {
       setIsExporting(false);
     }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Settings, Terminal, Database, Activity, Globe, Lock, Key } from 'lucide-react';
+import { Shield, Settings, Terminal, Database, Activity, Globe, Lock, Key, X } from 'lucide-react';
 import { ModelType, SecurityTool } from '../types';
 import { cn } from '../lib/utils';
 
@@ -7,18 +7,18 @@ interface SidebarProps {
   selectedModel: ModelType;
   onModelChange: (model: ModelType) => void;
   tools: SecurityTool[];
-  onToggleTool: (id: string) => void;
   onConfigureAI: (model: ModelType) => void;
   onConfigureTool: (id: string) => void;
+  onResetAll: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
   selectedModel, 
   onModelChange, 
   tools, 
-  onToggleTool,
   onConfigureAI,
-  onConfigureTool
+  onConfigureTool,
+  onResetAll
 }) => {
   const models: { id: ModelType; name: string; icon: any }[] = [
     { id: 'gemini', name: 'Gemini AI (Default)', icon: Shield },
@@ -109,7 +109,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </section>
 
-      <div className="pt-6 border-t border-white/10">
+      <div className="pt-6 border-t border-white/10 space-y-4">
+        <button 
+          onClick={onResetAll}
+          className="w-full py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-[10px] font-bold uppercase tracking-widest text-red-400 border border-red-500/20 transition-all flex items-center justify-center gap-2"
+        >
+          <X className="w-3 h-3" /> Reset All Connections
+        </button>
+
         <div className="flex items-center gap-2 text-[10px] text-white/30 uppercase tracking-widest">
           <Globe className="w-3 h-3" /> Global Intel Feed
         </div>

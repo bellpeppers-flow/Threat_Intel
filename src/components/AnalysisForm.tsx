@@ -10,13 +10,15 @@ interface AnalysisFormProps {
 export const AnalysisForm: React.FC<AnalysisFormProps> = ({ onAnalyze, isAnalyzing }) => {
   const [prompt, setPrompt] = useState('');
   const [files, setFiles] = useState<File[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setError(null);
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
       if (files.length + newFiles.length > 3) {
-        alert("Maximum 3 files allowed.");
+        setError("Maximum 3 files allowed.");
         return;
       }
       setFiles([...files, ...newFiles]);
@@ -73,6 +75,7 @@ export const AnalysisForm: React.FC<AnalysisFormProps> = ({ onAnalyze, isAnalyzi
               <Upload className="w-4 h-4" /> Attach Docs
             </button>
             <span className="text-[10px] text-white/20 uppercase tracking-widest">Max 3 files (PDF, IMG, TXT)</span>
+            {error && <span className="text-[10px] text-red-400 font-bold uppercase ml-2">{error}</span>}
           </div>
 
           <button

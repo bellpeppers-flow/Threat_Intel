@@ -19,49 +19,54 @@ const upload = multer({
 app.use(express.json({ limit: '50mb' }));
 
 // API Routes
-app.post("/api/analyze", upload.array("files", 3), async (req, res) => {
-  try {
-    const { prompt, model, tools } = req.body;
-    const files = req.files as Express.Multer.File[];
-
-    let fileContents = [];
-    if (files) {
-      for (const file of files) {
-        if (file.mimetype === "application/pdf") {
-          const dataBuffer = fs.readFileSync(file.path);
-          const data = await pdf(dataBuffer);
-          fileContents.push({ name: file.originalname, content: data.text, type: 'text' });
-        } else if (file.mimetype.startsWith("image/")) {
-          const base64 = fs.readFileSync(file.path, { encoding: 'base64' });
-          fileContents.push({ name: file.originalname, content: base64, type: 'image', mimeType: file.mimetype });
-        } else {
-          const content = fs.readFileSync(file.path, 'utf-8');
-          fileContents.push({ name: file.originalname, content, type: 'text' });
-        }
-        // Clean up uploaded file
-        fs.unlinkSync(file.path);
+app.post("/api/analyze", (req, res) => {
+  upload.array("files", 3)(req, res, async (err) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_COUNT') {
+        return res.status(400).json({ error: "Maximum 3 files allowed." });
       }
+      return res.status(400).json({ error: err.message });
+    } else if (err) {
+      return res.status(500).json({ error: "File upload failed." });
     }
 
-    // In a real app, we'd call external scrapers here.
-    // For this demo, we'll pass the "intent" to the frontend Gemini call
-    // or handle it here if we had the API key on the backend.
-    // Since the instructions say "Always call Gemini API from the frontend",
-    // we'll return the processed file data to the frontend for the final analysis.
+    try {
+      const { prompt, model, tools } = req.body;
+      const files = req.files as Express.Multer.File[];
 
-    res.json({
-      success: true,
-      processedFiles: fileContents,
-      scrapedIntel: [
-        "Recent CVE-2024-XXXX vulnerability detected in common architectural patterns.",
-        "Dark web chatter indicates increased targeting of SIEM misconfigurations.",
-        "New ransomware variant 'BISE-Alpha' observed in the wild."
-      ]
-    });
-  } catch (error) {
-    console.error("Analysis error:", error);
-    res.status(500).json({ error: "Failed to process analysis request" });
-  }
+      let fileContents = [];
+      if (files) {
+        for (const file of files) {
+          if (file.mimetype === "application/pdf") {
+            const dataBuffer = fs.readFileSync(file.path);
+            const data = await pdf(dataBuffer);
+            fileContents.push({ name: file.originalname, content: data.text, type: 'text' });
+          } else if (file.mimetype.startsWith("image/")) {
+            const base64 = fs.readFileSync(file.path, { encoding: 'base64' });
+            fileContents.push({ name: file.originalname, content: base64, type: 'image', mimeType: file.mimetype });
+          } else {
+            const content = fs.readFileSync(file.path, 'utf-8');
+            fileContents.push({ name: file.originalname, content, type: 'text' });
+          }
+          // Clean up uploaded file
+          fs.unlinkSync(file.path);
+        }
+      }
+
+      res.json({
+        success: true,
+        processedFiles: fileContents,
+        scrapedIntel: [
+          "Recent CVE-2024-XXXX vulnerability detected in common architectural patterns.",
+          "Dark web chatter indicates increased targeting of SIEM misconfigurations.",
+          "New ransomware variant 'BISE-Alpha' observed in the wild."
+        ]
+      });
+    } catch (error) {
+      console.error("Analysis error:", error);
+      res.status(500).json({ error: "Failed to process analysis request" });
+    }
+  });
 });
 
 async function startServer() {

@@ -9,9 +9,9 @@ import { Shield, Activity, Globe, Lock, Cpu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const INITIAL_TOOLS: SecurityTool[] = [
-  { id: '1', name: 'MISP Instance', type: 'MISP', config: {}, enabled: true },
+  { id: '1', name: 'MISP Instance', type: 'MISP', config: {}, enabled: false },
   { id: '2', name: 'Splunk SIEM', type: 'SIEM', config: {}, enabled: false },
-  { id: '3', name: 'Vulnerability DB', type: 'Database', config: {}, enabled: true },
+  { id: '3', name: 'Vulnerability DB', type: 'Database', config: {}, enabled: false },
   { id: '4', name: 'Nessus Scans', type: 'VulnerabilityScan', config: {}, enabled: false },
 ];
 
@@ -19,6 +19,7 @@ export default function App() {
   const [selectedModel, setSelectedModel] = useState<ModelType>('gemini');
   const [tools, setTools] = useState<SecurityTool[]>(() => {
     const saved = localStorage.getItem('bise_tools');
+    console.log("Initial tools from localStorage:", saved);
     return saved ? JSON.parse(saved) : INITIAL_TOOLS;
   });
   const [aiConfigs, setAiConfigs] = useState<Record<ModelType, AIConfig>>(() => {
@@ -43,10 +44,6 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('bise_ai_configs', JSON.stringify(aiConfigs));
   }, [aiConfigs]);
-
-  const handleToggleTool = (id: string) => {
-    setTools(tools.map(t => t.id === id ? { ...t, enabled: !t.enabled } : t));
-  };
 
   const handleConfigureAI = (model: ModelType) => {
     setConfigModal({
@@ -78,6 +75,21 @@ export default function App() {
   };
 
   const handleAnalyze = async (prompt: string, files: File[]) => {
+    const userApiKey = aiConfigs[selectedModel]?.apiKey;
+    const defaultApiKey = process.env.GEMINI_API_KEY;
+
+    if (!userApiKey && !defaultApiKey && selectedModel === 'gemini') {
+      setReport({
+        summary: "Error: No Gemini API Key found. Please configure it in the sidebar settings (Key icon) or ensure it's set in the environment.",
+        threatIntelligence: [],
+        threatHuntingSteps: [],
+        incidentResponsePlaybook: [],
+        securityBestPractices: [],
+        references: []
+      });
+      return;
+    }
+
     setIsAnalyzing(true);
     setReport(null);
 
@@ -93,12 +105,12 @@ export default function App() {
         body: formData,
       });
 
-      if (!response.ok) throw new Error('Analysis failed');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Backend processing failed');
+      }
 
       const data = await response.json();
-      
-      // Use user-provided API key if available
-      const userApiKey = aiConfigs[selectedModel]?.apiKey;
       
       const finalReport = await generateSecurityReport(
         prompt,
@@ -109,12 +121,30 @@ export default function App() {
       );
 
       setReport(finalReport);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Analysis error:", error);
-      alert("Analysis failed. Please check your API key and try again.");
+      // alert() is blocked in iframes, using console.error and state for feedback
+      setReport({
+        summary: `Analysis failed: ${error.message || 'Unknown error'}. Please check your configuration and try again.`,
+        threatIntelligence: [],
+        threatHuntingSteps: [],
+        incidentResponsePlaybook: [],
+        securityBestPractices: [],
+        references: []
+      });
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  const handleResetAll = () => {
+    console.log("Resetting all connections and configurations...");
+    localStorage.clear();
+    setTools(INITIAL_TOOLS.map(t => ({ ...t, enabled: false })));
+    setAiConfigs({} as any);
+    setReport(null);
+    setSelectedModel('gemini');
+    // Force a re-render by updating a dummy state if needed
   };
 
   return (
@@ -123,9 +153,9 @@ export default function App() {
         selectedModel={selectedModel} 
         onModelChange={setSelectedModel}
         tools={tools}
-        onToggleTool={handleToggleTool}
         onConfigureAI={handleConfigureAI}
         onConfigureTool={handleConfigureTool}
+        onResetAll={handleResetAll}
       />
 
       <main className="flex-1 overflow-y-auto relative">
