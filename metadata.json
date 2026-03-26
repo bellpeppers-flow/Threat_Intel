@@ -1,0 +1,5 @@
+{
+  "name": "BISE - Business Intelligent Security Engineer",
+  "description": "An intelligent security full-stack application for threat intelligence, OSINT, and automated security analysis using Gemini AI.",
+  "requestFramePermissions": []
+}
