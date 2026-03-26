@@ -120,6 +120,9 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
                 backdrop-filter: none !important;
                 border: 1px solid #e5e7eb !important;
                 box-shadow: none !important;
+                /* Remove page-break-inside: avoid to prevent huge white spaces */
+                page-break-inside: auto !important;
+                margin-bottom: 2rem !important;
               }
               h1, h2, h3, h4, h5, h6 {
                 color: #111827 !important;
@@ -129,6 +132,7 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
                 padding-bottom: 0.5rem !important;
                 margin-top: 1.5rem !important;
                 margin-bottom: 1rem !important;
+                page-break-after: avoid !important;
               }
               p, span, li, td, th {
                 color: #374151 !important;
@@ -136,10 +140,16 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
                 overflow-wrap: break-word !important;
                 line-height: 1.6 !important;
               }
+              a {
+                color: #2563eb !important;
+                text-decoration: none !important;
+                word-break: break-all !important;
+                overflow-wrap: anywhere !important;
+                display: inline-block !important;
+                max-width: 100% !important;
+              }
               .prose { 
                 color: #374151 !important; 
-                word-break: break-word !important;
-                overflow-wrap: break-word !important;
                 max-width: 100% !important;
               }
               pre {
@@ -147,25 +157,34 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
                 border: 1px solid #e5e7eb !important;
                 padding: 1rem !important;
                 border-radius: 0.375rem !important;
-              }
-              pre, code {
-                color: #1f2937 !important;
+                page-break-inside: avoid !important;
                 white-space: pre-wrap !important;
                 word-break: break-all !important;
-                overflow-wrap: break-word !important;
-                max-width: 100% !important;
+                overflow-wrap: anywhere !important;
+              }
+              code {
+                color: #1f2937 !important;
+                word-break: break-all !important;
+                overflow-wrap: anywhere !important;
               }
               img, svg {
                 max-width: 100% !important;
                 height: auto !important;
                 page-break-inside: avoid !important;
               }
+              ul, ol {
+                padding-left: 1.5rem !important;
+                margin-bottom: 1rem !important;
+              }
+              li {
+                margin-bottom: 0.5rem !important;
+              }
               .page-break {
                 page-break-before: always !important;
               }
               /* Avoid breaking inside sections */
-              section, .glass {
-                page-break-inside: avoid !important;
+              section {
+                page-break-inside: auto !important;
                 margin-bottom: 2rem !important;
               }
             `;
@@ -173,7 +192,7 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
           }
         },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+        pagebreak:    { mode: ['css', 'legacy'] }
       };
 
       await html2pdf().set(opt).from(reportRef.current).save();
