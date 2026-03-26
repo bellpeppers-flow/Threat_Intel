@@ -35,10 +35,42 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
         backgroundColor: '#050505',
         windowWidth: reportRef.current.scrollWidth,
         windowHeight: reportRef.current.scrollHeight,
-        onclone: (clonedDoc) => {
+        onclone: async (clonedDoc) => {
+          // Strip unsupported color functions from all style tags
+          const styleTags = clonedDoc.getElementsByTagName('style');
+          for (let i = 0; i < styleTags.length; i++) {
+            if (styleTags[i].innerHTML) {
+              styleTags[i].innerHTML = styleTags[i].innerHTML.replace(/[-a-zA-Z0-9]+:\s*[^;}]*\b(oklab|oklch|color-mix|lab|lch|hwb)\([^;}]*(?:;|$)/g, '');
+            }
+          }
+
+          // Fetch and strip unsupported color functions from linked stylesheets
+          const linkTags = Array.from(clonedDoc.getElementsByTagName('link'));
+          for (const link of linkTags) {
+            if (link.rel === 'stylesheet' && link.href) {
+              try {
+                const res = await fetch(link.href);
+                let cssText = await res.text();
+                cssText = cssText.replace(/[-a-zA-Z0-9]+:\s*[^;}]*\b(oklab|oklch|color-mix|lab|lch|hwb)\([^;}]*(?:;|$)/g, '');
+                
+                const newStyle = clonedDoc.createElement('style');
+                newStyle.innerHTML = cssText;
+                link.parentNode?.replaceChild(newStyle, link);
+              } catch (e) {
+                console.warn('Failed to fetch stylesheet for PDF export', e);
+              }
+            }
+          }
+
           const elements = clonedDoc.getElementsByTagName('*');
           for (let i = 0; i < elements.length; i++) {
             const el = elements[i] as HTMLElement;
+            
+            // Strip inline styles containing unsupported color functions
+            const inlineStyle = el.getAttribute('style');
+            if (inlineStyle && (inlineStyle.includes('oklch') || inlineStyle.includes('oklab') || inlineStyle.includes('color-mix') || inlineStyle.includes('lab') || inlineStyle.includes('lch') || inlineStyle.includes('hwb'))) {
+              el.setAttribute('style', inlineStyle.replace(/[-a-zA-Z0-9]+:\s*[^;}]*\b(oklab|oklch|color-mix|lab|lch|hwb)\([^;}]*(?:;|$)/g, ''));
+            }
             
             // Force RGB for everything to avoid oklch/oklab issues
             const style = window.getComputedStyle(el);
@@ -68,29 +100,40 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
             }
           }
 
-          // Add a style block to the cloned document to force standard colors
+          // Add a style block to the cloned document to force standard colors and wrapping
           const style = clonedDoc.createElement('style');
           style.innerHTML = `
             * { 
               color-scheme: dark !important;
               -webkit-print-color-adjust: exact !important;
+              max-width: 100% !important;
+              box-sizing: border-box !important;
             }
             .glass { 
               background: rgba(255, 255, 255, 0.05) !important;
               backdrop-filter: none !important;
               border: 1px solid rgba(255, 255, 255, 0.1) !important;
             }
-            h2, h3, p, div, span {
+            h2, h3, p, div, span, li {
               color: white !important;
+              word-break: break-word !important;
+              overflow-wrap: break-word !important;
             }
             .prose { 
               color: rgba(255,255,255,0.7) !important; 
               word-break: break-word !important;
-              overflow-wrap: anywhere !important;
+              overflow-wrap: break-word !important;
+              max-width: 100% !important;
             }
             pre, code {
               white-space: pre-wrap !important;
               word-break: break-all !important;
+              overflow-wrap: break-word !important;
+              max-width: 100% !important;
+            }
+            img, svg {
+              max-width: 100% !important;
+              height: auto !important;
             }
           `;
           clonedDoc.head.appendChild(style);
