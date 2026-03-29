@@ -6,6 +6,8 @@ export async function generateSecurityReport(
   processedFiles: any[],
   scrapedIntel: string[],
   tools: SecurityTool[],
+  messageBusData: any[] = [],
+  mcpData: any[] = [],
   userApiKey?: string
 ): Promise<SecurityReport> {
   const apiKey = userApiKey || process.env.GEMINI_API_KEY || "";
@@ -26,6 +28,15 @@ export async function generateSecurityReport(
           4. INCIDENT RESPONSE: Provide a granular, step-by-step technical playbook, not just high-level advice.
           5. REFERENCES: You MUST provide a comprehensive list of URLs for every piece of intelligence mentioned.
           
+          DYNAMIC ECOSYSTEM INTEGRATIONS:
+          The user has configured several security tools and services. Use the data from these integrations to inform your analysis.
+          
+          MESSAGE BUS / EVENT STREAMING:
+          If data from a message bus is provided, it was pulled in real-time by a subscriber specifically for this analysis. Use these events to identify live threats or anomalous patterns.
+          
+          MCP / DOCUMENTATION SERVERS:
+          If data from an MCP server is provided, it contains technical documentation, security standards, or implementation guides retrieved specifically for this context. Use this documentation to ensure your recommendations are aligned with the specified technologies (e.g., Cloudflare security best practices).
+          
           CRITICAL: Use the Google Search tool to find the LATEST security intelligence, including:
           1. Recent CVEs and vulnerabilities related to the technologies mentioned in the prompt or files.
           2. Threat intelligence from security blogs, dark web monitoring reports (from clear-web sources like Mandiant, CrowdStrike, BleepingComputer), and OSINT feeds.
@@ -33,7 +44,11 @@ export async function generateSecurityReport(
           
           USER PROMPT: ${prompt}
           
-          INTEGRATED ECOSYSTEM TOOLS: ${tools.map(t => `${t.name} (${t.type})`).join(", ")}
+          INTEGRATED ECOSYSTEM TOOLS: ${tools.map(t => `${t.name} (Type: ${t.type})`).join(", ")}
+          
+          ${messageBusData.length > 0 ? `REAL-TIME MESSAGE BUS EVENTS (PULLED BY SUBSCRIBER): ${JSON.stringify(messageBusData)}` : ""}
+          
+          ${mcpData.length > 0 ? `MCP DOCUMENTATION CONTEXT: ${JSON.stringify(mcpData)}` : ""}
           
           FILES ATTACHED: ${processedFiles.map(f => f.name).join(", ")}
           

@@ -59,19 +59,28 @@ const compressImage = async (file: File): Promise<File> => {
   });
 };
 
-const INITIAL_TOOLS: SecurityTool[] = [
-  { id: '1', name: 'MISP Instance', type: 'MISP', config: {}, enabled: false },
-  { id: '2', name: 'Splunk SIEM', type: 'SIEM', config: {}, enabled: false },
-  { id: '3', name: 'Vulnerability DB', type: 'Database', config: {}, enabled: false },
-  { id: '4', name: 'Nessus Scans', type: 'VulnerabilityScan', config: {}, enabled: false },
-];
+const INITIAL_TOOLS: SecurityTool[] = Array.from({ length: 10 }, (_, i) => ({
+  id: `${i + 1}`,
+  name: `Integration Slot ${i + 1}`,
+  type: 'API',
+  config: {},
+  enabled: false,
+}));
 
 export default function App() {
   const [selectedModel, setSelectedModel] = useState<ModelType>('gemini');
   const [tools, setTools] = useState<SecurityTool[]>(() => {
     const saved = localStorage.getItem('bise_tools');
-    console.log("Initial tools from localStorage:", saved);
-    return saved ? JSON.parse(saved) : INITIAL_TOOLS;
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Force reset if we find the old hardcoded tools
+      if (parsed.some((t: any) => t.name === 'MISP Instance' || t.name === 'Splunk SIEM')) {
+        console.log("Old tools detected, resetting to generic slots...");
+        return INITIAL_TOOLS;
+      }
+      return parsed;
+    }
+    return INITIAL_TOOLS;
   });
   const [aiConfigs, setAiConfigs] = useState<Record<ModelType, AIConfig>>(() => {
     const saved = localStorage.getItem('bise_ai_configs');
@@ -121,7 +130,13 @@ export default function App() {
     if (configModal.type === 'ai') {
       setAiConfigs({ ...aiConfigs, [configModal.id]: config });
     } else {
-      setTools(tools.map(t => t.id === configModal.id ? { ...t, config, enabled: autoEnable ? true : t.enabled } : t));
+      setTools(tools.map(t => t.id === configModal.id ? { 
+        ...t, 
+        name: config.name || t.name,
+        type: config.type || t.type,
+        config, 
+        enabled: autoEnable ? true : t.enabled 
+      } : t));
     }
   };
 
@@ -149,9 +164,11 @@ export default function App() {
 
     try {
       const formData = new FormData();
-      formData.append('prompt', prompt);
-      formData.append('model', selectedModel);
-      formData.append('tools', JSON.stringify(tools.filter(t => t.enabled)));
+      formData.append('data', JSON.stringify({
+        prompt,
+        model: selectedModel,
+        tools: tools.filter(t => t.enabled)
+      }));
       
       // Compress images before uploading to avoid 413 Request Entity Too Large errors
       for (const file of files) {
@@ -168,10 +185,11 @@ export default function App() {
         }
       }
 
-      console.log("Sending analysis request to /api/v2/analyze...");
-      const response = await fetch('/api/v2/analyze', {
+      console.log("Sending analysis request to /api/analyze...");
+      const response = await fetch('/api/analyze', {
         method: 'POST',
         body: formData,
+        credentials: 'include', // Ensure cookies are sent in cross-site iframe context
       });
 
       const contentType = response.headers.get("content-type");
@@ -183,7 +201,12 @@ export default function App() {
         } else {
           const textError = await response.text();
           console.error("Server returned non-JSON error:", textError);
-          errorMessage = `Server error (${response.status}): ${textError.substring(0, 100)}...`;
+          
+          if (textError.includes("Cookie check") || textError.includes("Action required to load your app")) {
+            errorMessage = "Authentication required. Please refresh the page or click 'Authenticate' if prompted by the platform. This is common when third-party cookies are blocked in Safari/iOS.";
+          } else {
+            errorMessage = `Server error (${response.status}): ${textError.substring(0, 100)}...`;
+          }
         }
         throw new Error(errorMessage);
       }
@@ -191,6 +214,11 @@ export default function App() {
       if (!contentType || !contentType.includes("application/json")) {
         const textResponse = await response.text();
         console.error("Server returned non-JSON response:", textResponse);
+        
+        if (textResponse.includes("Cookie check") || textResponse.includes("Action required to load your app")) {
+          throw new Error("Authentication required. Please refresh the page or ensure third-party cookies are allowed for this site.");
+        }
+        
         throw new Error(`Unexpected server response format. Expected JSON, got ${contentType || 'unknown'}. Response preview: ${textResponse.substring(0, 200)}`);
       }
 
@@ -199,16 +227,19 @@ export default function App() {
       
       const finalReport = await generateSecurityReport(
         prompt,
-        data.processedFiles,
-        data.scrapedIntel,
+        data.processedFiles || [],
+        data.scrapedIntel || [],
         tools.filter(t => t.enabled),
+        data.messageBusData || [],
+        data.mcpData || [],
         userApiKey
       );
 
       setReport(finalReport);
     } catch (error: any) {
       console.error("Analysis error:", error);
-      // alert() is blocked in iframes, using console.error and state for feedback
+      
+      // Clear any previous report and show the error
       setReport({
         id: 'error',
         timestamp: new Date().toISOString(),
@@ -317,6 +348,7 @@ export default function App() {
       </main>
 
       <ConfigModal
+        key={`${configModal.type}-${configModal.id}`}
         isOpen={configModal.isOpen}
         onClose={() => setConfigModal({ ...configModal, isOpen: false })}
         title={configModal.title}
@@ -324,7 +356,14 @@ export default function App() {
         initialConfig={
           configModal.type === 'ai' 
             ? aiConfigs[configModal.id as ModelType] || {} 
-            : tools.find(t => t.id === configModal.id)?.config || {}
+            : (() => {
+                const tool = tools.find(t => t.id === configModal.id);
+                return { 
+                  ...(tool?.config || {}), 
+                  name: tool?.name || '',
+                  type: (tool?.type as any) || 'API' 
+                };
+              })()
         }
         onSave={handleSaveConfig}
       />

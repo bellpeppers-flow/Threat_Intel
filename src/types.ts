@@ -8,11 +8,13 @@ export interface AIConfig {
 export interface SecurityTool {
   id: string;
   name: string;
-  type: 'MISP' | 'SIEM' | 'Database' | 'VulnerabilityScan' | 'Other';
+  type: 'API' | 'MCP' | 'Endpoint' | 'MessageBus';
   config: {
     apiKey?: string;
     mcpUrl?: string;
     endpoint?: string;
+    messageBusUrl?: string;
+    topic?: string;
   };
   enabled: boolean;
 }

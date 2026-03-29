@@ -1,10 +1,8 @@
 import React, { useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { SecurityReport } from '../types';
-import { ShieldAlert, Info, PlayCircle, CheckCircle, Link as LinkIcon, Download, Loader2 } from 'lucide-react';
+import { ShieldAlert, Info, PlayCircle, CheckCircle, Link as LinkIcon, Download, FileCode, FileJson } from 'lucide-react';
 import { motion } from 'framer-motion';
-// @ts-ignore
-import html2pdf from 'html2pdf.js';
 
 interface ReportViewProps {
   report: SecurityReport;
@@ -12,7 +10,6 @@ interface ReportViewProps {
 
 export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
   const reportRef = useRef<HTMLDivElement>(null);
-  const [isExporting, setIsExporting] = React.useState(false);
 
   const sections = [
     { title: 'Technical Overview', icon: Info, content: report.technicalOverview, color: '#a78bfa' }, // violet-400
@@ -22,185 +19,108 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
     { title: 'Security Best Practices', icon: CheckCircle, content: report.bestPractices, color: '#4ade80' }, // green-400
   ];
 
-  const handleExportPDF = async () => {
-    if (!reportRef.current) return;
-    setIsExporting(true);
+  const handleExportHTML = () => {
+    const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BISE Security Report - ${report.id}</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 40px; background: #f9f9f9; }
+        .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { border-bottom: 2px solid #eee; padding-bottom: 10px; color: #111; }
+        h2 { color: #2563eb; margin-top: 30px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .meta { color: #666; font-size: 0.9em; margin-bottom: 30px; }
+        .section { margin-bottom: 40px; }
+        .references { background: #f0f4f8; padding: 20px; border-radius: 4px; }
+        .references ul { list-style: none; padding: 0; }
+        .references li { margin-bottom: 10px; word-break: break-all; }
+        .references a { color: #2563eb; text-decoration: none; }
+        pre { background: #f4f4f4; padding: 15px; border-radius: 4px; overflow-x: auto; }
+        code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>BISE Security Analysis Report</h1>
+        <div class="meta">
+            <p><strong>Report ID:</strong> ${report.id}</p>
+            <p><strong>Generated:</strong> ${new Date(report.timestamp).toLocaleString()}</p>
+            <p><strong>Prompt:</strong> ${report.prompt}</p>
+        </div>
 
-    try {
-      const opt = {
-        margin:       [15, 15, 15, 15],
-        filename:     `BISE_Security_Report_${report.id}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { 
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          backgroundColor: '#ffffff',
-          onclone: async (clonedDoc: Document) => {
-            // Strip unsupported color functions from all style tags
-            const styleTags = clonedDoc.getElementsByTagName('style');
-            for (let i = 0; i < styleTags.length; i++) {
-              if (styleTags[i].innerHTML) {
-                styleTags[i].innerHTML = styleTags[i].innerHTML.replace(/[-a-zA-Z0-9]+:\s*[^;}]*\b(oklab|oklch|color-mix|lab|lch|hwb)\([^;}]*(?:;|$)/g, '');
-              }
-            }
+        ${sections.map(s => `
+            <div class="section">
+                <h2>${s.title}</h2>
+                <div>${s.content.replace(/\n/g, '<br>')}</div>
+            </div>
+        `).join('')}
 
-            // Fetch and strip unsupported color functions from linked stylesheets
-            const linkTags = Array.from(clonedDoc.getElementsByTagName('link'));
-            for (const link of linkTags) {
-              if (link.rel === 'stylesheet' && link.href) {
-                try {
-                  const res = await fetch(link.href);
-                  let cssText = await res.text();
-                  cssText = cssText.replace(/[-a-zA-Z0-9]+:\s*[^;}]*\b(oklab|oklch|color-mix|lab|lch|hwb)\([^;}]*(?:;|$)/g, '');
-                  
-                  const newStyle = clonedDoc.createElement('style');
-                  newStyle.innerHTML = cssText;
-                  link.parentNode?.replaceChild(newStyle, link);
-                } catch (e) {
-                  console.warn('Failed to fetch stylesheet for PDF export', e);
-                }
-              }
-            }
+        <div class="section references">
+            <h2>Reference Intelligence Links</h2>
+            <ul>
+                ${report.references.map(ref => `<li><a href="${ref}">${ref}</a></li>`).join('')}
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
+    `;
 
-            const elements = clonedDoc.getElementsByTagName('*');
-            for (let i = 0; i < elements.length; i++) {
-              const el = elements[i] as HTMLElement;
-              
-              // Strip inline styles containing unsupported color functions
-              const inlineStyle = el.getAttribute('style');
-              if (inlineStyle && (inlineStyle.includes('oklch') || inlineStyle.includes('oklab') || inlineStyle.includes('color-mix') || inlineStyle.includes('lab') || inlineStyle.includes('lch') || inlineStyle.includes('hwb'))) {
-                el.setAttribute('style', inlineStyle.replace(/[-a-zA-Z0-9]+:\s*[^;}]*\b(oklab|oklch|color-mix|lab|lch|hwb)\([^;}]*(?:;|$)/g, ''));
-              }
-              
-              // Force RGB for everything to avoid oklch/oklab issues
-              const style = window.getComputedStyle(el);
-              
-              if (style.color.includes('oklch') || style.color.includes('oklab')) el.style.color = '#000000';
-              if (style.backgroundColor.includes('oklch') || style.backgroundColor.includes('oklab')) el.style.backgroundColor = 'transparent';
-              if (style.borderColor.includes('oklch') || style.borderColor.includes('oklab')) el.style.borderColor = 'rgba(0,0,0,0.1)';
-              
-              // Fix text overflow/wrapping issues for PDF
-              el.style.wordBreak = 'break-word';
-              el.style.overflowWrap = 'anywhere';
-              el.style.whiteSpace = 'normal';
-              
-              // Strip filters and other problematic modern CSS
-              el.style.backdropFilter = 'none';
-              (el.style as any).webkitBackdropFilter = 'none';
-              el.style.filter = 'none';
-              
-              // Ensure visibility
-              el.style.opacity = '1';
-              el.style.visibility = 'visible';
-              
-              // Fix for glass class
-              if (el.classList.contains('glass')) {
-                el.style.background = '#ffffff';
-                el.style.border = '1px solid #e5e7eb';
-                el.style.boxShadow = 'none';
-              }
-            }
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `BISE_Security_Report_${report.id}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
-            // Add a style block to the cloned document to force standard colors and wrapping
-            const style = clonedDoc.createElement('style');
-            style.innerHTML = `
-              * { 
-                color-scheme: light !important;
-                -webkit-print-color-adjust: exact !important;
-                max-width: 100% !important;
-                box-sizing: border-box !important;
-              }
-              body, main, div, section, article {
-                background-color: #ffffff !important;
-                color: #000000 !important;
-              }
-              .glass { 
-                background: #ffffff !important;
-                backdrop-filter: none !important;
-                border: 1px solid #e5e7eb !important;
-                box-shadow: none !important;
-                /* Remove page-break-inside: avoid to prevent huge white spaces */
-                page-break-inside: auto !important;
-                margin-bottom: 2rem !important;
-              }
-              h1, h2, h3, h4, h5, h6 {
-                color: #111827 !important;
-                word-break: break-word !important;
-                overflow-wrap: break-word !important;
-                border-bottom: 1px solid #e5e7eb !important;
-                padding-bottom: 0.5rem !important;
-                margin-top: 1.5rem !important;
-                margin-bottom: 1rem !important;
-                page-break-after: avoid !important;
-              }
-              p, span, li, td, th {
-                color: #374151 !important;
-                word-break: break-word !important;
-                overflow-wrap: break-word !important;
-                line-height: 1.6 !important;
-              }
-              a {
-                color: #2563eb !important;
-                text-decoration: none !important;
-                word-break: break-all !important;
-                overflow-wrap: anywhere !important;
-                display: inline-block !important;
-                max-width: 100% !important;
-              }
-              .prose { 
-                color: #374151 !important; 
-                max-width: 100% !important;
-              }
-              pre {
-                background-color: #f3f4f6 !important;
-                border: 1px solid #e5e7eb !important;
-                padding: 1rem !important;
-                border-radius: 0.375rem !important;
-                page-break-inside: avoid !important;
-                white-space: pre-wrap !important;
-                word-break: break-all !important;
-                overflow-wrap: anywhere !important;
-              }
-              code {
-                color: #1f2937 !important;
-                word-break: break-all !important;
-                overflow-wrap: anywhere !important;
-              }
-              img, svg {
-                max-width: 100% !important;
-                height: auto !important;
-                page-break-inside: avoid !important;
-              }
-              ul, ol {
-                padding-left: 1.5rem !important;
-                margin-bottom: 1rem !important;
-              }
-              li {
-                margin-bottom: 0.5rem !important;
-              }
-              .page-break {
-                page-break-before: always !important;
-              }
-              /* Avoid breaking inside sections */
-              section {
-                page-break-inside: auto !important;
-                margin-bottom: 2rem !important;
-              }
-            `;
-            clonedDoc.head.appendChild(style);
-          }
-        },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak:    { mode: ['css', 'legacy'] }
-      };
+  const handleExportXML = () => {
+    const escapeXml = (unsafe: string) => {
+      return unsafe.replace(/[<>&"']/g, (c) => {
+        switch (c) {
+          case '<': return '&lt;';
+          case '>': return '&gt;';
+          case '&': return '&amp;';
+          case '"': return '&quot;';
+          case "'": return '&apos;';
+          default: return c;
+        }
+      });
+    };
 
-      await html2pdf().set(opt).from(reportRef.current).save();
-    } catch (error) {
-      console.error('PDF Export failed:', error);
-    } finally {
-      setIsExporting(false);
-    }
+    const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<SecurityReport id="${report.id}">
+    <Metadata>
+        <Timestamp>${report.timestamp}</Timestamp>
+        <Prompt>${escapeXml(report.prompt)}</Prompt>
+    </Metadata>
+    <Analysis>
+        <TechnicalOverview>${escapeXml(report.technicalOverview)}</TechnicalOverview>
+        <ThreatIntelligence>${escapeXml(report.threatIntelligence)}</ThreatIntelligence>
+        <ThreatHuntingSteps>${escapeXml(report.threatHunting)}</ThreatHuntingSteps>
+        <IncidentResponsePlaybook>${escapeXml(report.incidentResponse)}</IncidentResponsePlaybook>
+        <SecurityBestPractices>${escapeXml(report.bestPractices)}</SecurityBestPractices>
+    </Analysis>
+    <References>
+        ${report.references.map(ref => `<Link>${escapeXml(ref)}</Link>`).join('\n        ')}
+    </References>
+</SecurityReport>`;
+
+    const blob = new Blob([xmlContent], { type: 'application/xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `BISE_Security_Report_${report.id}.xml`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -214,14 +134,20 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
           <h2 className="text-2xl font-bold tracking-tighter">Analysis Report</h2>
           <p className="text-xs text-white/40 uppercase tracking-widest">Generated at {new Date(report.timestamp).toLocaleString()}</p>
         </div>
-        <button 
-          onClick={handleExportPDF}
-          disabled={isExporting}
-          className="flex items-center gap-2 px-4 py-2 glass rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-white/10 transition-colors disabled:opacity-50"
-        >
-          {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-          {isExporting ? 'Exporting...' : 'Export PDF'}
-        </button>
+        <div className="flex gap-3">
+          <button 
+            onClick={handleExportHTML}
+            className="flex items-center gap-2 px-4 py-2 glass rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-white/10 transition-colors"
+          >
+            <FileCode className="w-4 h-4" /> Export HTML
+          </button>
+          <button 
+            onClick={handleExportXML}
+            className="flex items-center gap-2 px-4 py-2 glass rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-white/10 transition-colors"
+          >
+            <FileJson className="w-4 h-4" /> Export XML
+          </button>
+        </div>
       </div>
 
       <div ref={reportRef} className="space-y-8 p-4 bg-[#050505]">

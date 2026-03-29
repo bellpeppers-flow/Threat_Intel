@@ -32,6 +32,7 @@ export const AnalysisForm: React.FC<AnalysisFormProps> = ({ onAnalyze, isAnalyzi
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim() && files.length === 0) return;
+    setError(null); // Clear any file-related errors on submit
     onAnalyze(prompt, files);
   };
 

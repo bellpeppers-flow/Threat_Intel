@@ -1,14 +1,31 @@
 import React, { useState } from 'react';
 import { X, Key, Server, Save, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '../lib/utils';
 
 interface ConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
   type: 'ai' | 'tool';
-  initialConfig: { apiKey?: string; mcpUrl?: string; endpoint?: string };
-  onSave: (config: { apiKey?: string; mcpUrl?: string; endpoint?: string }, autoEnable?: boolean) => void;
+  initialConfig: { 
+    name?: string;
+    type?: 'API' | 'MCP' | 'Endpoint' | 'MessageBus';
+    apiKey?: string; 
+    mcpUrl?: string; 
+    endpoint?: string;
+    messageBusUrl?: string;
+    topic?: string;
+  };
+  onSave: (config: { 
+    name?: string;
+    type?: 'API' | 'MCP' | 'Endpoint' | 'MessageBus';
+    apiKey?: string; 
+    mcpUrl?: string; 
+    endpoint?: string;
+    messageBusUrl?: string;
+    topic?: string;
+  }, autoEnable?: boolean) => void;
 }
 
 export const ConfigModal: React.FC<ConfigModalProps> = ({ isOpen, onClose, title, type, initialConfig, onSave }) => {
@@ -30,8 +47,8 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ isOpen, onClose, title
         throw new Error('API Key is required for validation.');
       }
       
-      if (type === 'tool' && !config.apiKey && !config.mcpUrl) {
-        throw new Error('Either API Key or MCP URL is required.');
+      if (type === 'tool' && !config.apiKey && !config.mcpUrl && !config.endpoint && !config.messageBusUrl) {
+        throw new Error('At least one configuration field is required.');
       }
 
       setStatus('success');
@@ -65,20 +82,59 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ isOpen, onClose, title
           </div>
 
           <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold">API Key</label>
-              <div className="relative">
-                <input
-                  type="password"
-                  value={config.apiKey || ''}
-                  onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
-                  placeholder="Enter API Key..."
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-green-500/50 focus:ring-0 outline-none transition-all"
-                />
+            {type === 'tool' && (
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold">Integration Name (Dynamic Label)</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={config.name || ''}
+                    onChange={(e) => setConfig({ ...config, name: e.target.value })}
+                    placeholder="e.g., MISP, Splunk, Kafka..."
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-green-500/50 focus:ring-0 outline-none transition-all"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             {type === 'tool' && (
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold">Integration Type</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['API', 'MCP', 'Endpoint', 'MessageBus'].map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setConfig({ ...config, type: t as any })}
+                      className={cn(
+                        "px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest border transition-all",
+                        config.type === t 
+                          ? "bg-green-500/20 border-green-500/50 text-green-400" 
+                          : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10"
+                      )}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(config.type === 'API' || type === 'ai') && (
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold">API Key</label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={config.apiKey || ''}
+                    onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
+                    placeholder="Enter API Key..."
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-green-500/50 focus:ring-0 outline-none transition-all"
+                  />
+                </div>
+              </div>
+            )}
+
+            {config.type === 'MCP' && (
               <div className="space-y-2">
                 <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold">MCP Server URL</label>
                 <div className="relative">
@@ -93,18 +149,49 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ isOpen, onClose, title
               </div>
             )}
 
-            <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold">Endpoint URL (Optional)</label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={config.endpoint || ''}
-                  onChange={(e) => setConfig({ ...config, endpoint: e.target.value })}
-                  placeholder="https://api.example.com/v1"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-green-500/50 focus:ring-0 outline-none transition-all"
-                />
+            {(config.type === 'Endpoint' || config.type === 'API') && (
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold">Endpoint URL</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={config.endpoint || ''}
+                    onChange={(e) => setConfig({ ...config, endpoint: e.target.value })}
+                    placeholder="https://api.example.com/v1"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-green-500/50 focus:ring-0 outline-none transition-all"
+                  />
+                </div>
               </div>
-            </div>
+            )}
+
+            {config.type === 'MessageBus' && (
+              <>
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold">Message Bus / Event Streaming URL</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={config.messageBusUrl || ''}
+                      onChange={(e) => setConfig({ ...config, messageBusUrl: e.target.value })}
+                      placeholder="e.g., kafka://localhost:9092"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-green-500/50 focus:ring-0 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold">Topic / Channel Subscriber</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={config.topic || ''}
+                      onChange={(e) => setConfig({ ...config, topic: e.target.value })}
+                      placeholder="e.g., security-events, alerts"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-green-500/50 focus:ring-0 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             {status === 'error' && (
               <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center gap-2 text-red-400 text-xs">

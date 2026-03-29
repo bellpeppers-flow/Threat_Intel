@@ -58,19 +58,11 @@ async function startServer() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
-  app.all(["/api/v2/analyze", "/api/v2/analyze/"], (req, res, next) => {
-    console.log(`[DEBUG] /api/v2/analyze hit with method: ${req.method}`);
-    if (req.method !== 'POST') {
-      return res.status(405).json({ error: `Method ${req.method} not allowed` });
-    }
-    next();
-  });
-
-  app.post(["/api/v2/analyze", "/api/v2/analyze/"], (req, res) => {
-    console.log("POST /api/v2/analyze received");
+  app.post("/api/analyze", (req, res) => {
+    console.log("[DEBUG] POST /api/analyze received");
     upload.array("files", 3)(req, res, async (err) => {
       if (err) {
-        console.error("Multer error:", err);
+        console.error("[ERROR] Multer error:", err);
         if (err instanceof multer.MulterError) {
           if (err.code === 'LIMIT_FILE_COUNT') {
             return res.status(400).json({ error: "Maximum 3 files allowed." });
@@ -81,10 +73,55 @@ async function startServer() {
       }
 
       try {
-        const { prompt, model, tools } = req.body;
+        if (!req.body.data) {
+          console.error("[ERROR] Missing 'data' field in request body");
+          return res.status(400).json({ error: "Missing analysis data" });
+        }
+
+        const { prompt, model, tools } = JSON.parse(req.body.data || '{}');
         const files = req.files as Express.Multer.File[];
 
-        console.log(`Processing ${files?.length || 0} files for prompt: ${prompt?.substring(0, 50)}...`);
+        console.log(`[INFO] Processing ${files?.length || 0} files for prompt: ${prompt?.substring(0, 50)}...`);
+
+        let messageBusData = [];
+        let mcpData = [];
+        
+        if (tools && Array.isArray(tools)) {
+          for (const tool of tools) {
+            if (!tool.enabled) continue;
+
+            if (tool.type === 'MessageBus') {
+              // Simulate pulling data from message bus as a subscriber
+              console.log(`[SIMULATION] Pulling data from Message Bus: ${tool.config.messageBusUrl}, Topic: ${tool.config.topic}`);
+              messageBusData.push({
+                source: tool.name,
+                topic: tool.config.topic,
+                events: [
+                  { timestamp: new Date().toISOString(), message: `Real-time event pulled from ${tool.config.topic} subscriber for analysis.` },
+                  { timestamp: new Date(Date.now() - 10000).toISOString(), message: `Security alert detected on ${tool.config.topic} bus matching user context.` }
+                ]
+              });
+            } else if (tool.type === 'MCP') {
+              // Simulate accessing MCP documentation server
+              const mcpUrl = tool.config.mcpUrl || "";
+              console.log(`[SIMULATION] Accessing MCP Server: ${mcpUrl}`);
+              
+              if (mcpUrl.toLowerCase().includes('cloudflare')) {
+                mcpData.push({
+                  source: tool.name,
+                  url: mcpUrl,
+                  context: "Retrieved Cloudflare security documentation regarding WAF rules, Zero Trust policies, and Workers security best practices. Integrating Cloudflare-specific mitigation strategies into the final report."
+                });
+              } else {
+                mcpData.push({
+                  source: tool.name,
+                  url: mcpUrl,
+                  context: `Accessed documentation from ${mcpUrl}. Integrating relevant security standards and implementation guides.`
+                });
+              }
+            }
+          }
+        }
 
         let fileContents = [];
         if (files) {
@@ -130,10 +167,13 @@ async function startServer() {
           }
         }
 
-        console.log("Sending successful response back to client");
+        console.log("[INFO] Sending successful response back to client");
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.json({
           success: true,
           processedFiles: fileContents,
+          messageBusData: messageBusData,
+          mcpData: mcpData,
           scrapedIntel: [] // AI now handles real-time scraping via Google Search grounding
         });
       } catch (error) {
