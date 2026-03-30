@@ -232,7 +232,8 @@ export default function App() {
         tools.filter(t => t.enabled),
         data.messageBusData || [],
         data.mcpData || [],
-        userApiKey
+        userApiKey,
+        selectedModel
       );
 
       setReport(finalReport);
@@ -353,6 +354,7 @@ export default function App() {
         onClose={() => setConfigModal({ ...configModal, isOpen: false })}
         title={configModal.title}
         type={configModal.type}
+        modelId={configModal.id}
         initialConfig={
           configModal.type === 'ai' 
             ? aiConfigs[configModal.id as ModelType] || {} 

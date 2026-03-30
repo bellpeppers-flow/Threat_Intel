@@ -8,6 +8,7 @@ interface ConfigModalProps {
   onClose: () => void;
   title: string;
   type: 'ai' | 'tool';
+  modelId?: string;
   initialConfig: { 
     name?: string;
     type?: 'API' | 'MCP' | 'Endpoint' | 'MessageBus';
@@ -28,7 +29,7 @@ interface ConfigModalProps {
   }, autoEnable?: boolean) => void;
 }
 
-export const ConfigModal: React.FC<ConfigModalProps> = ({ isOpen, onClose, title, type, initialConfig, onSave }) => {
+export const ConfigModal: React.FC<ConfigModalProps> = ({ isOpen, onClose, title, type, modelId, initialConfig, onSave }) => {
   const [config, setConfig] = useState(initialConfig);
   const [status, setStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
@@ -45,6 +46,24 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ isOpen, onClose, title
       
       if (type === 'ai' && !config.apiKey) {
         throw new Error('API Key is required for validation.');
+      }
+
+      // Basic validation for API keys based on provider
+      if (type === 'ai' && config.apiKey) {
+        const key = config.apiKey.trim();
+        if (modelId === 'gemini') {
+          if (!key.startsWith('AIza')) {
+            throw new Error('Invalid Gemini API Key format. It should start with "AIza".');
+          }
+        } else if (modelId === 'gpt') {
+          if (!key.startsWith('sk-')) {
+            throw new Error('Invalid ChatGPT API Key format. It should start with "sk-".');
+          }
+        } else if (modelId === 'claude') {
+          if (!key.startsWith('sk-ant-')) {
+            throw new Error('Invalid Claude API Key format. It should start with "sk-ant-".');
+          }
+        }
       }
       
       if (type === 'tool' && !config.apiKey && !config.mcpUrl && !config.endpoint && !config.messageBusUrl) {
