@@ -1,4 +1,5 @@
 import { OpenAI } from "openai";
+import { Anthropic } from "@anthropic-ai/sdk";
 import { GoogleGenAI, Type } from "@google/genai";
 import { SecurityReport, ModelType, SecurityTool } from "../types";
 
@@ -58,16 +59,20 @@ export async function generateSecurityReport(
     "references": ["Comprehensive list of URLs used for grounding and further reading"]
   }`;
 
-  if (model === 'gpt') {
+  if (model === 'gpt' || model === 'ms-copilot') {
     const apiKey = userApiKey || "";
     if (!apiKey) {
-      throw new Error("OpenAI API Key is required for GPT analysis. Please configure it in the sidebar.");
+      throw new Error(`${model === 'gpt' ? 'OpenAI' : 'Security Copilot'} API Key is required. Please configure it in the sidebar.`);
     }
 
     const openai = new OpenAI({ apiKey, dangerouslyAllowBrowser: true });
+    
+    const persona = model === 'ms-copilot' 
+      ? "You are Microsoft Security Copilot. You specialize in the Microsoft Security ecosystem (Sentinel, Defender, Entra) and provide technical security analysis in JSON format."
+      : "You are a Senior Business Intelligent Security Engineer. Return your response in JSON format.";
 
     const messages: any[] = [
-      { role: "system", content: "You are a Senior Business Intelligent Security Engineer. Return your response in JSON format." },
+      { role: "system", content: persona },
       {
         role: "user",
         content: [
@@ -95,6 +100,56 @@ export async function generateSecurityReport(
     });
 
     const content = response.choices[0].message.content || "{}";
+    const data = JSON.parse(content);
+
+    return {
+      id: Math.random().toString(36).substr(2, 9),
+      timestamp: new Date().toISOString(),
+      prompt,
+      ...data,
+      references: [...new Set([...(data.references || [])])]
+    };
+  }
+
+  if (model === 'claude') {
+    const apiKey = userApiKey || "";
+    if (!apiKey) {
+      throw new Error("Anthropic API Key is required for Claude analysis. Please configure it in the sidebar.");
+    }
+
+    const anthropic = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+
+    const messages: any[] = [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: systemInstruction },
+          ...processedFiles.map(f => {
+            if (f.type === 'image') {
+              return {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: f.mimeType,
+                  data: f.content
+                }
+              };
+            } else {
+              return { type: "text", text: `File: ${f.name}\nContent: ${f.content}` };
+            }
+          })
+        ]
+      }
+    ];
+
+    const response = await anthropic.messages.create({
+      model: "claude-3-5-sonnet-20240620",
+      max_tokens: 4096,
+      system: "You are a Senior Business Intelligent Security Engineer. You MUST return your response as a valid JSON object. Do not include any text outside the JSON object.",
+      messages
+    });
+
+    const content = response.content[0].type === 'text' ? response.content[0].text : "{}";
     const data = JSON.parse(content);
 
     return {
