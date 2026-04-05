@@ -3,7 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { AnalysisForm } from './components/AnalysisForm';
 import { ReportView } from './components/ReportView';
 import { ConfigModal } from './components/ConfigModal';
-import { ModelType, SecurityTool, SecurityReport, AIConfig } from './types';
+import { ModelType, SecurityTool, SecurityReport, AIConfig, IntelItem } from './types';
 import { generateSecurityReport } from './services/geminiService';
 import { Shield, Activity, Globe, Lock, Cpu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -89,6 +89,7 @@ export default function App() {
   
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [report, setReport] = useState<SecurityReport | null>(null);
+  const [intelFeed, setIntelFeed] = useState<IntelItem[]>([]);
   
   const [configModal, setConfigModal] = useState<{
     isOpen: boolean;
@@ -104,6 +105,25 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('bise_ai_configs', JSON.stringify(aiConfigs));
   }, [aiConfigs]);
+
+  // Real-time Intel Feed Polling
+  useEffect(() => {
+    const fetchIntel = async () => {
+      try {
+        const response = await fetch('/api/intel-feed');
+        if (response.ok) {
+          const data = await response.json();
+          setIntelFeed(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch intel feed:", error);
+      }
+    };
+
+    fetchIntel();
+    const interval = setInterval(fetchIntel, 15 * 60 * 1000); // 15 minutes
+    return () => clearInterval(interval);
+  }, []);
 
   const handleConfigureAI = (model: ModelType) => {
     setConfigModal({
@@ -276,6 +296,7 @@ export default function App() {
         onConfigureAI={handleConfigureAI}
         onConfigureTool={handleConfigureTool}
         onResetAll={handleResetAll}
+        intelFeed={intelFeed}
       />
 
       <main className="flex-1 overflow-y-auto relative">

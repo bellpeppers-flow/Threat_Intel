@@ -4,8 +4,11 @@ import path from "path";
 import multer from "multer";
 import fs from "fs";
 import { createRequire } from "module";
+import Parser from "rss-parser";
+
 const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");
+const parser = new Parser();
 
 // Helper to detect image type from buffer
 function detectImageType(buffer: Buffer): string | null {
@@ -56,6 +59,37 @@ async function startServer() {
   // API Routes
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
+  app.get("/api/intel-feed", async (req, res) => {
+    try {
+      // Fetching from CISA Cybersecurity Advisories
+      const feed = await parser.parseURL("https://www.cisa.gov/cybersecurity-advisories/all.xml");
+      
+      const items = feed.items.slice(0, 5).map(item => {
+        const title = item.title || "Unknown Advisory";
+        let severity = "MEDIUM";
+        
+        if (title.toLowerCase().includes('critical') || (item.contentSnippet && item.contentSnippet.toLowerCase().includes('critical'))) {
+          severity = "CRITICAL";
+        } else if (title.toLowerCase().includes('high') || (item.contentSnippet && item.contentSnippet.toLowerCase().includes('high'))) {
+          severity = "HIGH";
+        }
+
+        return {
+          title,
+          link: item.link,
+          pubDate: item.pubDate,
+          contentSnippet: item.contentSnippet?.substring(0, 150) + "...",
+          severity
+        };
+      });
+
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching intel feed:", error);
+      res.status(500).json({ error: "Failed to fetch security intel feed" });
+    }
   });
 
   app.post("/api/analyze", (req, res) => {

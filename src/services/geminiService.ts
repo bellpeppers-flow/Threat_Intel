@@ -161,10 +161,6 @@ export async function generateSecurityReport(
     };
   }
 
-  if (model !== 'gemini') {
-    throw new Error(`${model.toUpperCase()} integration is not yet implemented. Please use Gemini AI for analysis.`);
-  }
-
   const apiKey = userApiKey || process.env.GEMINI_API_KEY || "";
   const ai = new GoogleGenAI({ apiKey });
 

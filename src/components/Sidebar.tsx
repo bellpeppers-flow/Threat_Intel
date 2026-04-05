@@ -1,7 +1,8 @@
 import React from 'react';
-import { Shield, Settings, Terminal, Database, Activity, Globe, Lock, Key, X, Zap, Cpu, Link, Share2, Plus } from 'lucide-react';
-import { ModelType, SecurityTool } from '../types';
+import { Shield, Settings, Terminal, Database, Activity, Globe, Lock, Key, X, Zap, Cpu, Link, Share2, Plus, ExternalLink } from 'lucide-react';
+import { ModelType, SecurityTool, IntelItem } from '../types';
 import { cn } from '../lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface SidebarProps {
   selectedModel: ModelType;
@@ -10,6 +11,7 @@ interface SidebarProps {
   onConfigureAI: (model: ModelType) => void;
   onConfigureTool: (id: string) => void;
   onResetAll: () => void;
+  intelFeed: IntelItem[];
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -18,7 +20,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   tools, 
   onConfigureAI,
   onConfigureTool,
-  onResetAll
+  onResetAll,
+  intelFeed
 }) => {
   const models: { id: ModelType; name: string; icon: any }[] = [
     { id: 'gemini', name: 'Gemini AI (Default)', icon: Shield },
@@ -158,12 +161,48 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex items-center gap-2 text-[10px] text-white/30 uppercase tracking-widest">
           <Globe className="w-3 h-3" /> Global Intel Feed
         </div>
-        <div className="mt-3 space-y-2">
-          <div className="p-2 rounded bg-white/5 border border-white/5">
-            <p className="text-[10px] text-white/60 leading-tight">
-              <span className="text-red-400 font-bold">CRITICAL:</span> Zero-day exploit targeting Kubernetes clusters observed in dark web forums.
-            </p>
-          </div>
+        
+        <div className="mt-3 space-y-3">
+          <AnimatePresence mode="popLayout">
+            {intelFeed.length > 0 ? (
+              intelFeed.map((item, idx) => (
+                <motion.a
+                  key={item.link || idx}
+                  href={item.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ delay: idx * 0.1 }}
+                  className="block p-3 rounded-xl bg-white/5 border border-white/5 hover:border-green-500/30 hover:bg-green-500/5 transition-all group"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={cn(
+                      "text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter",
+                      item.severity === 'CRITICAL' ? "bg-red-500/20 text-red-400" :
+                      item.severity === 'HIGH' ? "bg-orange-500/20 text-orange-400" :
+                      "bg-blue-500/20 text-blue-400"
+                    )}>
+                      {item.severity}
+                    </span>
+                    <ExternalLink className="w-2.5 h-2.5 text-white/20 group-hover:text-green-400 transition-colors" />
+                  </div>
+                  <p className="text-[10px] text-white/80 font-bold leading-tight line-clamp-2 group-hover:text-white transition-colors">
+                    {item.title}
+                  </p>
+                  <p className="text-[9px] text-white/30 mt-1 font-medium">
+                    {new Date(item.pubDate).toLocaleDateString()}
+                  </p>
+                </motion.a>
+              ))
+            ) : (
+              <div className="p-4 rounded-xl bg-white/5 border border-white/5 flex flex-col items-center justify-center gap-2 opacity-40">
+                <Activity className="w-4 h-4 animate-pulse" />
+                <span className="text-[9px] font-bold uppercase tracking-widest">Syncing Intel...</span>
+              </div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>

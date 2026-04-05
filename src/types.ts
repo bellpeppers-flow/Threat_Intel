@@ -31,6 +31,14 @@ export interface SecurityReport {
   references: string[];
 }
 
+export interface IntelItem {
+  title: string;
+  link: string;
+  pubDate: string;
+  contentSnippet: string;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
+}
+
 export interface AnalysisRequest {
   prompt: string;
   model: ModelType;
