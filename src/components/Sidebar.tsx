@@ -24,9 +24,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   intelFeed
 }) => {
   const models: { id: ModelType; name: string; icon: any }[] = [
-    { id: 'gemini', name: 'Gemini AI (Default)', icon: Shield },
-    { id: 'gpt', name: 'ChatGPT-4', icon: Terminal },
-    { id: 'claude', name: 'Claude 3.5', icon: Lock },
+    { id: 'gemini', name: 'Gemini AI', icon: Shield },
+    { id: 'gpt', name: 'CHATGPT', icon: Terminal },
+    { id: 'claude', name: 'Claude', icon: Lock },
     { id: 'ms-copilot', name: 'MS Security Copilot', icon: Shield },
   ];
 

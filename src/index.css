@@ -54,7 +54,10 @@ body {
   background: rgba(34, 197, 94, 0.5);
 }
 
-.report-content h3 {
+.report-content h1, 
+.report-content h2, 
+.report-content h3, 
+.report-content h4 {
   color: var(--section-color) !important;
   margin-top: 2.5rem !important;
   margin-bottom: 1rem !important;

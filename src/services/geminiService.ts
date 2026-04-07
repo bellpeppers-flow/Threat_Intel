@@ -26,7 +26,7 @@ export async function generateSecurityReport(
   FORMATTING GUIDELINES:
   1. LIST INTEGRITY: Every numbered step (e.g., '1.', 'Step 1:') or bullet point MUST start on a new double-newline. Never combine multiple steps into a single paragraph.
   2. CVE ISOLATION: Every CVE mentioned (e.g., CVE-2024-XXXX) must be treated as a primary entity. You MUST use a Markdown Level 3 Header (###) for each CVE ID.
-  3. SIDE HEADINGS: Use Markdown Level 3 Headers (###) for all side headings (e.g., "### Management Plane Hardening").
+  3. SIDE HEADINGS: Use Markdown Level 3 Headers (###) for all side headings, including every "Step" in Threat Hunting and every "Phase" in the Incident Response Playbook.
   4. VERTICAL SPACING: Ensure there are exactly TWO blank lines before every Level 3 Header (###) to provide clear visual separation.
   5. COMMAND BLOCK SPACING: Ensure all code/command blocks (using triple backticks) have a blank line before and after them.
   6. SEMANTIC GROUPING: Use bold text for key terms and ensure the report is highly structured.

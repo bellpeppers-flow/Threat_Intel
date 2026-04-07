@@ -126,11 +126,18 @@ export default function App() {
   }, []);
 
   const handleConfigureAI = (model: ModelType) => {
+    const displayNames: Record<ModelType, string> = {
+      gemini: 'Gemini AI',
+      gpt: 'CHATGPT',
+      claude: 'Claude',
+      'ms-copilot': 'MS Security Copilot'
+    };
+
     setConfigModal({
       isOpen: true,
       type: 'ai',
       id: model,
-      title: model.toUpperCase()
+      title: displayNames[model]
     });
   };
 

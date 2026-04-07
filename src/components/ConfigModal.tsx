@@ -57,7 +57,7 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ isOpen, onClose, title
           }
         } else if (modelId === 'gpt') {
           if (!key.startsWith('sk-')) {
-            throw new Error('Invalid ChatGPT API Key format. It should start with "sk-".');
+            throw new Error('Invalid CHATGPT API Key format. It should start with "sk-".');
           }
         } else if (modelId === 'claude') {
           if (!key.startsWith('sk-ant-')) {
