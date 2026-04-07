@@ -158,13 +158,21 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: index * 0.1 }}
-              className="glass rounded-2xl p-6 border border-white/5 space-y-4"
+              className={cn(
+                "glass rounded-2xl p-6 border border-white/5 space-y-4",
+                (section.title === 'Threat Hunting Steps' || 
+                 section.title === 'Incident Response Playbook' || 
+                 section.title === 'Security Best Practices') && "md:col-span-2"
+              )}
             >
               <div className="flex items-center gap-3">
                 <section.icon className="w-5 h-5" style={{ color: section.color }} />
                 <h3 className="font-bold uppercase tracking-widest text-xs text-white/80">{section.title}</h3>
               </div>
-              <div className="prose prose-invert prose-sm max-w-none text-white/60 leading-relaxed font-sans break-words overflow-hidden">
+              <div 
+                className="prose prose-invert prose-sm max-w-none text-white/60 leading-relaxed font-sans break-words max-h-[400px] overflow-y-auto pr-2 custom-scrollbar report-content"
+                style={{ '--section-color': section.color } as React.CSSProperties}
+              >
                 <ReactMarkdown>{section.content}</ReactMarkdown>
               </div>
             </motion.div>
