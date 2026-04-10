@@ -68,6 +68,7 @@ const INITIAL_TOOLS: SecurityTool[] = Array.from({ length: 10 }, (_, i) => ({
 }));
 
 export default function App() {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedModel, setSelectedModel] = useState<ModelType>('gemini');
   const [tools, setTools] = useState<SecurityTool[]>(() => {
     const saved = localStorage.getItem('bise_tools');
@@ -296,37 +297,54 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-full bg-[#050505] text-white overflow-hidden security-grid">
-      <Sidebar 
-        selectedModel={selectedModel} 
-        onModelChange={setSelectedModel}
-        tools={tools}
-        onConfigureAI={handleConfigureAI}
-        onConfigureTool={handleConfigureTool}
-        onResetAll={handleResetAll}
-        intelFeed={intelFeed}
-      />
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSidebarOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+            />
+            <Sidebar 
+              selectedModel={selectedModel} 
+              onModelChange={setSelectedModel}
+              tools={tools}
+              onConfigureAI={handleConfigureAI}
+              onConfigureTool={handleConfigureTool}
+              onResetAll={handleResetAll}
+              intelFeed={intelFeed}
+              onClose={() => setIsSidebarOpen(false)}
+            />
+          </>
+        )}
+      </AnimatePresence>
 
       <main className="flex-1 overflow-y-auto relative">
         <div className="scanning-line absolute top-0 left-0 w-full pointer-events-none opacity-20" />
         
-        <div className="p-8 max-w-6xl mx-auto space-y-12">
+        <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8 md:space-y-12">
           <header className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-green-500/10 rounded-2xl border border-green-500/20">
+              <button 
+                onClick={() => setIsSidebarOpen(true)}
+                className="p-3 bg-white/5 rounded-2xl border border-white/10 hover:border-green-500/30 transition-all"
+              >
                 <Cpu className="w-6 h-6 text-green-400" />
-              </div>
+              </button>
               <div>
-                <h2 className="text-sm font-bold uppercase tracking-[0.3em] text-white/40">Operation Center</h2>
-                <h1 className="text-3xl font-black tracking-tighter">BISE COMMAND</h1>
+                <h2 className="text-[10px] md:text-sm font-bold uppercase tracking-[0.3em] text-white/40">Operation Center</h2>
+                <h1 className="text-xl md:text-3xl font-black tracking-tighter">BISE COMMAND</h1>
               </div>
             </div>
             
-            <div className="flex gap-4">
-              <div className="glass px-4 py-2 rounded-xl flex items-center gap-3 border-white/5">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">System Online</span>
+            <div className="flex gap-2 md:gap-4">
+              <div className="glass px-3 md:px-4 py-2 rounded-xl flex items-center gap-2 md:gap-3 border-white/5">
+                <div className="w-1.5 md:w-2 h-1.5 md:h-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-white/60">Online</span>
               </div>
-              <div className="glass px-4 py-2 rounded-xl flex items-center gap-3 border-white/5">
+              <div className="hidden sm:flex glass px-4 py-2 rounded-xl items-center gap-3 border-white/5">
                 <Activity className="w-4 h-4 text-blue-400" />
                 <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">Intel Syncing</span>
               </div>

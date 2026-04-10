@@ -58,8 +58,8 @@ export const AnalysisForm: React.FC<AnalysisFormProps> = ({ onAnalyze, isAnalyzi
           ))}
         </div>
 
-        <div className="flex items-center justify-between pt-4 border-t border-white/5">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-4 border-t border-white/5 gap-4">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               type="file"
               ref={fileInputRef}
@@ -75,14 +75,14 @@ export const AnalysisForm: React.FC<AnalysisFormProps> = ({ onAnalyze, isAnalyzi
             >
               <Upload className="w-4 h-4" /> Attach Docs
             </button>
-            <span className="text-[10px] text-white/20 uppercase tracking-widest">Max 3 files (PDF, IMG, TXT)</span>
+            <span className="text-[10px] text-white/20 uppercase tracking-widest">Max 3 files</span>
             {error && <span className="text-[10px] text-red-400 font-bold uppercase ml-2">{error}</span>}
           </div>
 
           <button
             disabled={isAnalyzing || (!prompt.trim() && files.length === 0)}
             className={cn(
-              "px-6 py-2 rounded-xl flex items-center gap-2 font-bold uppercase tracking-widest text-xs transition-all",
+              "w-full sm:w-auto px-6 py-2 rounded-xl flex items-center justify-center gap-2 font-bold uppercase tracking-widest text-xs transition-all",
               isAnalyzing 
                 ? "bg-white/10 text-white/40 cursor-not-allowed" 
                 : "bg-green-500 text-black hover:bg-green-400 shadow-[0_0_20px_rgba(34,197,94,0.3)]"

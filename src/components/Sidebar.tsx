@@ -12,6 +12,7 @@ interface SidebarProps {
   onConfigureTool: (id: string) => void;
   onResetAll: () => void;
   intelFeed: IntelItem[];
+  onClose?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -21,7 +22,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onConfigureAI,
   onConfigureTool,
   onResetAll,
-  intelFeed
+  intelFeed,
+  onClose
 }) => {
   const models: { id: ModelType; name: string; icon: any }[] = [
     { id: 'gemini', name: 'Gemini AI', icon: Shield },
@@ -41,15 +43,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <div className="w-80 h-full glass border-r border-white/10 p-6 flex flex-col gap-8 overflow-y-auto">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 bg-green-500/20 rounded-lg">
-          <Shield className="w-8 h-8 text-green-400" />
+    <motion.div 
+      initial={{ x: -320 }}
+      animate={{ x: 0 }}
+      exit={{ x: -320 }}
+      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+      className="fixed inset-y-0 left-0 w-[90%] md:w-80 h-full glass border-r border-white/10 p-6 flex flex-col gap-8 overflow-y-auto z-50 shadow-2xl"
+    >
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-green-500/20 rounded-lg">
+            <Shield className="w-8 h-8 text-green-400" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold tracking-tighter italic">BISE</h1>
+            <p className="text-[10px] uppercase tracking-widest text-white/40 font-bold">Security Intelligence</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-xl font-bold tracking-tighter italic">BISE</h1>
-          <p className="text-[10px] uppercase tracking-widest text-white/40 font-bold">Security Intelligence</p>
-        </div>
+        {onClose && (
+          <button 
+            onClick={onClose}
+            className="p-2 rounded-xl hover:bg-white/5 text-white/40 hover:text-white transition-all"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       <section>
@@ -205,7 +223,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </AnimatePresence>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

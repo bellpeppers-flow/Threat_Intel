@@ -129,21 +129,21 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
       animate={{ opacity: 1, y: 0 }}
       className="w-full max-w-5xl mx-auto space-y-8 pb-20"
     >
-      <div className="flex items-center justify-between border-b border-white/10 pb-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-white/10 pb-4 gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tighter">Analysis Report</h2>
-          <p className="text-xs text-white/40 uppercase tracking-widest">Generated at {new Date(report.timestamp).toLocaleString()}</p>
+          <h2 className="text-xl md:text-2xl font-bold tracking-tighter">Analysis Report</h2>
+          <p className="text-[10px] md:text-xs text-white/40 uppercase tracking-widest">Generated at {new Date(report.timestamp).toLocaleString()}</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2 md:gap-3 w-full sm:w-auto">
           <button 
             onClick={handleExportHTML}
-            className="flex items-center gap-2 px-4 py-2 glass rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-white/10 transition-colors"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 md:px-4 py-2 glass rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-widest hover:bg-white/10 transition-colors"
           >
             <FileCode className="w-4 h-4" /> Export HTML
           </button>
           <button 
             onClick={handleExportXML}
-            className="flex items-center gap-2 px-4 py-2 glass rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-white/10 transition-colors"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 md:px-4 py-2 glass rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-widest hover:bg-white/10 transition-colors"
           >
             <FileJson className="w-4 h-4" /> Export XML
           </button>
