@@ -234,3 +234,124 @@ export async function generateSecurityReport(
     references: [...new Set([...(data.references || []), ...groundingUrls])]
   };
 }
+
+export async function generateMitreAttackMapping(
+  report: SecurityReport,
+  userApiKey?: string,
+  model: ModelType = 'gemini'
+): Promise<any> {
+  const systemInstruction = `You are a Senior MITRE ATT&CK Architect and Threat Modeling Expert.
+  Your task is to transform a security intelligence report into a structured MITRE ATT&CK Matrix mapping.
+  
+  INPUT DATA:
+  Technical Overview: ${report.technicalOverview}
+  Threat Intelligence: ${report.threatIntelligence}
+  Threat Hunting: ${report.threatHunting}
+  
+  CRITICAL GUIDELINES:
+  1. EVIDENCE-BASED MAPPING: Every technique you map MUST be directly supported by the input data. Do not add generic techniques.
+  2. HIERARCHICAL STRUCTURE: Group findings by MITRE Tactics (e.g., Initial Access, Execution, Persistence).
+  3. MEANINGFUL BREAKDOWN: If there are many findings, prioritize the most critical ones. Provide a high-level summary of the overall attack flow.
+  4. GRANULARITY: For each technique, provide:
+     - ID (e.g., T1566)
+     - Name
+     - Description
+     - Evidence: A specific quote or reference from the input report justifying this mapping.
+     - Mitigation: Technical steps to prevent this.
+     - Detection: How to detect this using logs or telemetry.
+  
+  FORMAT: You MUST return a valid JSON object matching this schema:
+  {
+    "summary": "A concise strategic summary of the attack lifecycle identified in the report.",
+    "tactics": [
+      {
+        "id": "TA00XX",
+        "name": "Tactic Name",
+        "description": "Brief description of the tactic's role in this specific threat.",
+        "techniques": [
+          {
+            "id": "TXXXX",
+            "name": "Technique Name",
+            "description": "Technical description of the technique.",
+            "evidence": "Specific evidence from the report.",
+            "mitigation": "Prevention steps.",
+            "detection": "Detection logic."
+          }
+        ]
+      }
+    ]
+  }`;
+
+  if (model === 'gpt' || model === 'ms-copilot') {
+    const apiKey = userApiKey || "";
+    if (!apiKey) throw new Error("API Key required for MITRE mapping.");
+    const openai = new OpenAI({ apiKey, dangerouslyAllowBrowser: true });
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "system", content: systemInstruction }],
+      response_format: { type: "json_object" }
+    });
+    return JSON.parse(response.choices[0].message.content || "{}");
+  }
+
+  if (model === 'claude') {
+    const apiKey = userApiKey || "";
+    if (!apiKey) throw new Error("API Key required for MITRE mapping.");
+    const anthropic = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+    const response = await anthropic.messages.create({
+      model: "claude-3-5-sonnet-20240620",
+      max_tokens: 4096,
+      system: "You are a MITRE ATT&CK Architect. Return ONLY valid JSON.",
+      messages: [{ role: "user", content: systemInstruction }]
+    });
+    const content = response.content[0].type === 'text' ? response.content[0].text : "{}";
+    return JSON.parse(content);
+  }
+
+  const apiKey = userApiKey || process.env.GEMINI_API_KEY || "";
+  const ai = new GoogleGenAI({ apiKey });
+
+  const result = await ai.models.generateContent({
+    model: "gemini-2.0-flash",
+    contents: [{ role: "user", parts: [{ text: systemInstruction }] }],
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          summary: { type: Type.STRING },
+          tactics: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                id: { type: Type.STRING },
+                name: { type: Type.STRING },
+                description: { type: Type.STRING },
+                techniques: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      id: { type: Type.STRING },
+                      name: { type: Type.STRING },
+                      description: { type: Type.STRING },
+                      evidence: { type: Type.STRING },
+                      mitigation: { type: Type.STRING },
+                      detection: { type: Type.STRING }
+                    },
+                    required: ["id", "name", "description", "evidence", "mitigation", "detection"]
+                  }
+                }
+              },
+              required: ["id", "name", "description", "techniques"]
+            }
+          }
+        },
+        required: ["summary", "tactics"]
+      }
+    }
+  });
+
+  return JSON.parse(result.text || "{}");
+}

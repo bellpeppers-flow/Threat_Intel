@@ -4,7 +4,7 @@ import { AnalysisForm } from './components/AnalysisForm';
 import { ReportView } from './components/ReportView';
 import { ConfigModal } from './components/ConfigModal';
 import { ModelType, SecurityTool, SecurityReport, AIConfig, IntelItem } from './types';
-import { generateSecurityReport } from './services/geminiService';
+import { generateSecurityReport, generateMitreAttackMapping } from './services/geminiService';
 import { Shield, Activity, Globe, Lock, Cpu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -98,6 +98,7 @@ export default function App() {
   });
   
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isMappingMitre, setIsMappingMitre] = useState(false);
   const [report, setReport] = useState<SecurityReport | null>(null);
   const [intelFeed, setIntelFeed] = useState<IntelItem[]>([]);
   
@@ -294,6 +295,26 @@ export default function App() {
     }
   };
 
+  const handleGenerateMitre = async () => {
+    if (!report) return;
+    
+    setIsMappingMitre(true);
+    try {
+      const userApiKey = aiConfigs[selectedModel]?.apiKey;
+      const mitreData = await generateMitreAttackMapping(report, userApiKey, selectedModel);
+      
+      setReport({
+        ...report,
+        mitreAttack: mitreData
+      });
+    } catch (error: any) {
+      console.error("MITRE Mapping error:", error);
+      // We don't want to crash the whole report view, just show an error in console or a toast if we had one
+    } finally {
+      setIsMappingMitre(false);
+    }
+  };
+
   const handleResetAll = () => {
     console.log("Resetting all connections and configurations...");
     localStorage.clear();
@@ -380,7 +401,11 @@ export default function App() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                <ReportView report={report} />
+                <ReportView 
+                  report={report} 
+                  onGenerateMitre={handleGenerateMitre}
+                  isMappingMitre={isMappingMitre}
+                />
               </motion.div>
             )}
           </AnimatePresence>

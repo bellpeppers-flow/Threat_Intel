@@ -1,14 +1,17 @@
 import React, { useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { SecurityReport } from '../types';
-import { ShieldAlert, Info, PlayCircle, CheckCircle, Link as LinkIcon, Download, FileCode, FileJson } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { SecurityReport, MitreAttackData } from '../types';
+import { ShieldAlert, Info, PlayCircle, CheckCircle, Link as LinkIcon, Download, FileCode, FileJson, Target, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MitreMatrix } from './MitreMatrix';
 
 interface ReportViewProps {
   report: SecurityReport;
+  onGenerateMitre: () => void;
+  isMappingMitre: boolean;
 }
 
-export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
+export const ReportView: React.FC<ReportViewProps> = ({ report, onGenerateMitre, isMappingMitre }) => {
   const reportRef = useRef<HTMLDivElement>(null);
 
   const sections = [
@@ -147,8 +150,42 @@ export const ReportView: React.FC<ReportViewProps> = ({ report }) => {
           >
             <FileJson className="w-4 h-4" /> Export XML
           </button>
+          {!report.mitreAttack && (
+            <button 
+              onClick={onGenerateMitre}
+              disabled={isMappingMitre}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 md:px-4 py-2 bg-green-500 text-black rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-widest hover:bg-green-400 transition-all disabled:opacity-50 shadow-[0_0_15px_rgba(34,197,94,0.3)]"
+            >
+              {isMappingMitre ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Mapping TTPs...
+                </>
+              ) : (
+                <>
+                  <Target className="w-4 h-4" /> Generate MITRE Matrix
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
+
+      <AnimatePresence>
+        {report.mitreAttack && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            className="space-y-4"
+          >
+            <div className="flex items-center gap-3 px-4">
+              <Target className="w-5 h-5 text-green-400" />
+              <h3 className="text-lg font-black tracking-tighter uppercase">MITRE ATT&CK Technical Blueprint</h3>
+            </div>
+            <MitreMatrix data={report.mitreAttack} />
+            <div className="h-px bg-white/10 my-8" />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div ref={reportRef} className="space-y-8 p-4 bg-[#050505]">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

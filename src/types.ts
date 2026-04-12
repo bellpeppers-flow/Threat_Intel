@@ -29,6 +29,24 @@ export interface SecurityReport {
   incidentResponse: string;
   bestPractices: string;
   references: string[];
+  mitreAttack?: MitreAttackData;
+}
+
+export interface MitreAttackData {
+  summary: string;
+  tactics: {
+    id: string;
+    name: string;
+    description: string;
+    techniques: {
+      id: string;
+      name: string;
+      description: string;
+      evidence: string;
+      mitigation: string;
+      detection: string;
+    }[];
+  }[];
 }
 
 export interface IntelItem {
