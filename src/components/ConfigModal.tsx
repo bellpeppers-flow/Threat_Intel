@@ -11,7 +11,7 @@ interface ConfigModalProps {
   modelId?: string;
   initialConfig: { 
     name?: string;
-    type?: 'API' | 'MCP' | 'Endpoint' | 'MessageBus';
+    type?: 'API' | 'MCP' | 'Endpoint' | 'MessageBus' | 'Dorking';
     apiKey?: string; 
     mcpUrl?: string; 
     endpoint?: string;
@@ -20,7 +20,7 @@ interface ConfigModalProps {
   };
   onSave: (config: { 
     name?: string;
-    type?: 'API' | 'MCP' | 'Endpoint' | 'MessageBus';
+    type?: 'API' | 'MCP' | 'Endpoint' | 'MessageBus' | 'Dorking';
     apiKey?: string; 
     mcpUrl?: string; 
     endpoint?: string;
@@ -66,7 +66,7 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ isOpen, onClose, title
         }
       }
       
-      if (type === 'tool' && !config.apiKey && !config.mcpUrl && !config.endpoint && !config.messageBusUrl) {
+      if (type === 'tool' && !config.apiKey && !config.mcpUrl && !config.endpoint && !config.messageBusUrl && config.type !== 'Dorking') {
         throw new Error('At least one configuration field is required.');
       }
 
@@ -120,7 +120,7 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ isOpen, onClose, title
               <div className="space-y-2">
                 <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold">Integration Type</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {['API', 'MCP', 'Endpoint', 'MessageBus'].map((t) => (
+                  {['API', 'MCP', 'Endpoint', 'MessageBus', 'Dorking'].map((t) => (
                     <button
                       key={t}
                       onClick={() => setConfig({ ...config, type: t as any })}

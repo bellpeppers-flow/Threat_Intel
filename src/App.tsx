@@ -59,13 +59,22 @@ const compressImage = async (file: File): Promise<File> => {
   });
 };
 
-const INITIAL_TOOLS: SecurityTool[] = Array.from({ length: 10 }, (_, i) => ({
-  id: `${i + 1}`,
-  name: `Integration Slot ${i + 1}`,
-  type: 'API',
-  config: {},
-  enabled: false,
-}));
+const INITIAL_TOOLS: SecurityTool[] = [
+  {
+    id: '1',
+    name: 'Google Dorking Engine',
+    type: 'Dorking',
+    config: {},
+    enabled: true,
+  },
+  ...Array.from({ length: 9 }, (_, i) => ({
+    id: `${i + 2}`,
+    name: `Integration Slot ${i + 2}`,
+    type: 'API' as const,
+    config: {},
+    enabled: false,
+  })),
+];
 
 export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -357,7 +366,7 @@ export default function App() {
                 What are we securing today?
               </h3>
               <p className="text-white/40 text-sm max-w-xl mx-auto">
-                Input your architectural query or upload security documents for deep analysis across web, deep web, and dark web intelligence.
+                Input your architectural query or upload security documents for deep analysis across web, deep web, and dark web intelligence using advanced Google Dorking mechanisms.
               </p>
             </div>
             
@@ -379,7 +388,7 @@ export default function App() {
           {!report && !isAnalyzing && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 opacity-40">
               {[
-                { icon: Globe, title: 'OSINT Scraper', desc: 'Real-time web & deep web intelligence gathering.' },
+                { icon: Globe, title: 'OSINT Dorking', desc: 'Advanced Google Dorking for deep web & leak discovery.' },
                 { icon: Lock, title: 'Dark Web Monitor', desc: 'Scanning illicit forums for targeted threats.' },
                 { icon: Shield, title: 'AI Synthesis', desc: 'Multi-model analysis for precise security mapping.' },
               ].map((item, i) => (

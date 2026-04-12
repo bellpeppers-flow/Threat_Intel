@@ -41,6 +41,13 @@ export async function generateSecurityReport(
   MCP / DOCUMENTATION SERVERS:
   If data from an MCP server is provided, it contains technical documentation, security standards, or implementation guides retrieved specifically for this context. Use this documentation to ensure your recommendations are aligned with the specified technologies (e.g., Cloudflare security best practices).
   
+  GOOGLE DORKING & DEEP WEB INTEL:
+  If the 'Google Dorking Engine' is enabled, you MUST use advanced Google Search operators (Dorks) to uncover "unsurfaced" intel, including:
+  1. DEEP WEB LEAKS: Use dorks like 'site:pastebin.com "target_domain"', 'site:github.com "target_domain" "password"', or 'filetype:sql "target_domain"'.
+  2. EXPOSED ASSETS: Use 'intitle:"index of" "target_domain"', 'inurl:admin "target_domain"', or 'filetype:env "target_domain"'.
+  3. DARK WEB MIRRORS: Search for clear-web mirrors or mentions of the target on dark-web indexing sites (e.g., 'site:ahmia.fi "target_domain"').
+  4. SENSITIVE DOCUMENTS: Use 'filetype:pdf "confidential" "target_domain"' or 'filetype:xlsx "employee list" "target_domain"'.
+  
   CRITICAL: Use the Google Search tool to find the LATEST security intelligence, including:
   1. Recent CVEs and vulnerabilities related to the technologies mentioned in the prompt or files.
   2. Threat intelligence from security blogs, dark web monitoring reports (from clear-web sources like Mandiant, CrowdStrike, BleepingComputer), and OSINT feeds.

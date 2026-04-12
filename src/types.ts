@@ -8,7 +8,7 @@ export interface AIConfig {
 export interface SecurityTool {
   id: string;
   name: string;
-  type: 'API' | 'MCP' | 'Endpoint' | 'MessageBus';
+  type: 'API' | 'MCP' | 'Endpoint' | 'MessageBus' | 'Dorking';
   config: {
     apiKey?: string;
     mcpUrl?: string;

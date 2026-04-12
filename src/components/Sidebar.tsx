@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Settings, Terminal, Database, Activity, Globe, Lock, Key, X, Zap, Cpu, Link, Share2, Plus, ExternalLink } from 'lucide-react';
+import { Shield, Settings, Terminal, Database, Activity, Globe, Lock, Key, X, Zap, Cpu, Link, Share2, Plus, ExternalLink, Search } from 'lucide-react';
 import { ModelType, SecurityTool, IntelItem } from '../types';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -38,6 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       case 'MCP': return Cpu;
       case 'Endpoint': return Link;
       case 'MessageBus': return Share2;
+      case 'Dorking': return Search;
       default: return Database;
     }
   };
